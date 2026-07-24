@@ -455,7 +455,7 @@ export function PerformanceForm({ performance }: PerformanceFormProps) {
         <FormSection
           number="05"
           title="Trace GPX"
-          description="Le fichier est simplifie pour afficher le parcours sur la carte."
+          description="Le fichier est simplifie pour dessiner le parcours et son profil."
         >
           <div className="gpx-form-field">
             <GpxTrackField

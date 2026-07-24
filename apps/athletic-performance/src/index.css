@@ -1122,16 +1122,6 @@ a {
   gap: 20px;
 }
 
-.drawer-panel .gpx-visuals {
-  grid-template-columns: 1fr;
-}
-
-.drawer-panel .elevation-profile {
-  min-height: 220px;
-  border-top: 1px solid var(--line);
-  border-left: 0;
-}
-
 .danger-button {
   display: inline-flex;
   align-items: center;
@@ -1191,6 +1181,37 @@ a {
   border-radius: var(--radius);
 }
 
+.gpx-preview.is-compact {
+  margin-top: 12px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.gpx-preview.is-compact .track-sketch {
+  padding: 10px 8px 7px;
+}
+
+.gpx-preview.is-compact .track-sketch svg {
+  height: 118px;
+}
+
+.gpx-preview.is-compact .track-sketch figcaption {
+  font-size: 0.64rem;
+}
+
+.gpx-preview.is-compact .elevation-profile {
+  padding: 8px;
+}
+
+.gpx-preview.is-compact .elevation-profile figcaption {
+  font-size: 0.66rem;
+}
+
+.gpx-preview.is-compact .elevation-profile svg {
+  height: 42px;
+}
+
 .gpx-preview > header {
   display: flex;
   align-items: center;
@@ -1222,24 +1243,92 @@ a {
 
 .gpx-visuals {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
-  min-height: 280px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.gpx-map,
-.gpx-map .leaflet-container {
+.track-sketch {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 16px 16px 10px;
+  background: #f8faf9;
+}
+
+.track-sketch svg {
   width: 100%;
-  min-height: 280px;
+  height: clamp(220px, 30vw, 380px);
+}
+
+.track-sketch path,
+.track-sketch circle {
+  vector-effect: non-scaling-stroke;
+}
+
+.track-sketch-halo {
+  fill: none;
+  stroke: var(--surface);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.track-sketch-line {
+  fill: none;
+  stroke: var(--sport-accent, var(--accent));
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.track-marker {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.track-marker-start {
+  fill: var(--sport-accent, var(--accent));
+}
+
+.track-marker-finish {
+  fill: var(--ink-strong);
+}
+
+.track-sketch figcaption {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.track-sketch figcaption span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.track-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.track-legend-dot.is-start {
+  background: var(--sport-accent, var(--accent));
+}
+
+.track-legend-dot.is-finish {
+  background: var(--ink-strong);
 }
 
 .elevation-profile {
   display: grid;
   min-width: 0;
-  grid-template-rows: auto 1fr;
-  gap: 12px;
+  gap: 7px;
   margin: 0;
-  border-left: 1px solid var(--line);
-  padding: 16px;
+  border-top: 1px solid var(--line);
+  padding: 11px 16px 13px;
   background: var(--surface);
 }
 
@@ -1256,18 +1345,24 @@ a {
 
 .elevation-profile svg {
   width: 100%;
-  height: 100%;
-  min-height: 180px;
+  height: 72px;
 }
 
 .elevation-profile path {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--sport-accent, var(--accent));
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
 
+.elevation-baseline {
+  stroke: var(--line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
 .elevation-profile.is-empty {
+  min-height: 72px;
   place-items: center;
   color: var(--muted);
   font-size: 0.8rem;
@@ -1624,14 +1719,8 @@ a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .gpx-visuals {
-    grid-template-columns: 1fr;
-  }
-
-  .elevation-profile {
-    min-height: 240px;
-    border-top: 1px solid var(--line);
-    border-left: 0;
+  .track-sketch svg {
+    height: 210px;
   }
 
   .gpx-preview > header small {

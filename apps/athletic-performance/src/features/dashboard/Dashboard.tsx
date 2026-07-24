@@ -458,6 +458,10 @@ function PerformanceCard({
           ))}
         </div>
 
+        {performance.track ? (
+          <GpxTrackPreview track={performance.track} compact />
+        ) : null}
+
         <span className="details-link">
           Voir les details
           <ChevronRight size={16} aria-hidden="true" />
