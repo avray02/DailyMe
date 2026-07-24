@@ -29,6 +29,7 @@ export const performanceSchema = z
       'mountain-biking',
       'gravel-cycling',
       'open-water-swimming',
+      'winter-trail',
       'ski-mountaineering',
       'cross-country-skiing-skating',
       'cross-country-skiing-classic',

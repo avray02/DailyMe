@@ -169,6 +169,12 @@ service cloud.firestore {
         )
         || (
           request.resource.data.activityDefinitionId
+            == 'winter-trail__race'
+          && request.resource.data.categoryKey == 'winter-sports'
+          && request.resource.data.sportKey == 'winter-trail'
+        )
+        || (
+          request.resource.data.activityDefinitionId
             == 'ski-mountaineering__race'
           && request.resource.data.categoryKey == 'winter-sports'
           && request.resource.data.sportKey == 'ski-mountaineering'

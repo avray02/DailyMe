@@ -86,6 +86,12 @@ export const sportOptions: SportOption[] = [
     icon: Waves,
   },
   {
+    key: 'winter-trail',
+    categoryKey: 'winter-sports',
+    label: "Trail d'hiver",
+    icon: Mountain,
+  },
+  {
     key: 'ski-mountaineering',
     categoryKey: 'winter-sports',
     label: 'Ski de randonnee',

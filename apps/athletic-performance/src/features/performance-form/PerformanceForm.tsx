@@ -715,7 +715,8 @@ function getDefaultValues(
   performance?: Performance,
 ): PerformanceWizardValues {
   const today = new Date()
-  const durationSeconds = performance?.data.durationSeconds ?? 0
+  const durationSeconds = performance?.data.durationSeconds
+  const emptyNumber = undefined as unknown as number
   const definition =
     activityDefinitions.find(
       (candidate) => candidate.id === performance?.activityDefinitionId,
@@ -729,12 +730,23 @@ function getDefaultValues(
     year: performance?.date.year ?? today.getFullYear(),
     month: performance?.date.month ?? today.getMonth() + 1,
     day: performance?.date.day ?? today.getDate(),
-    distanceValue: performance ? performance.data.distanceMeters / 1000 : 0,
+    distanceValue: performance
+      ? performance.data.distanceMeters / 1000
+      : emptyNumber,
     distanceUnit: 'km',
     elevationGainMeters: performance?.data.elevationGainMeters,
-    durationHours: Math.floor(durationSeconds / 3600),
-    durationMinutes: Math.floor((durationSeconds % 3600) / 60),
-    durationSeconds: durationSeconds % 60,
+    durationHours:
+      typeof durationSeconds === 'number'
+        ? Math.floor(durationSeconds / 3600)
+        : emptyNumber,
+    durationMinutes:
+      typeof durationSeconds === 'number'
+        ? Math.floor((durationSeconds % 3600) / 60)
+        : emptyNumber,
+    durationSeconds:
+      typeof durationSeconds === 'number'
+        ? durationSeconds % 60
+        : emptyNumber,
     resultStatus: performance?.data.resultStatus ?? 'ranked',
     statusComment: performance?.data.statusComment ?? '',
     sexRank: rankedValue(performance?.data.rankings.sex),
