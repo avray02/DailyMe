@@ -39,14 +39,20 @@ export function GpxTrackPreview({
       ) : null}
 
       <div className="gpx-visuals">
-        <TrackSketch points={track.points} />
-        <ElevationProfile track={track} />
+        <TrackSketch points={track.points} showLegend={!compact} />
+        {!compact ? <ElevationProfile track={track} /> : null}
       </div>
     </div>
   )
 }
 
-function TrackSketch({ points }: { points: TrackPoint[] }) {
+function TrackSketch({
+  points,
+  showLegend,
+}: {
+  points: TrackPoint[]
+  showLegend: boolean
+}) {
   const normalized = normalizeTrack(points)
   const path = normalized
     .map(
@@ -79,16 +85,18 @@ function TrackSketch({ points }: { points: TrackPoint[] }) {
           r="1.8"
         />
       </svg>
-      <figcaption>
-        <span>
-          <i className="track-legend-dot is-start" aria-hidden="true" />
-          Depart
-        </span>
-        <span>
-          <i className="track-legend-dot is-finish" aria-hidden="true" />
-          Arrivee
-        </span>
-      </figcaption>
+      {showLegend ? (
+        <figcaption>
+          <span>
+            <i className="track-legend-dot is-start" aria-hidden="true" />
+            Depart
+          </span>
+          <span>
+            <i className="track-legend-dot is-finish" aria-hidden="true" />
+            Arrivee
+          </span>
+        </figcaption>
+      ) : null}
     </figure>
   )
 }

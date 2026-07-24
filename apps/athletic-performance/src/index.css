@@ -539,6 +539,21 @@ a {
   text-align: left;
 }
 
+.card-summary {
+  min-height: 112px;
+}
+
+.card-summary.has-track {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 42%);
+  align-items: center;
+  gap: 10px;
+}
+
+.card-summary-copy {
+  min-width: 0;
+}
+
 .card-meta {
   display: flex;
   min-width: 0;
@@ -1182,34 +1197,18 @@ a {
 }
 
 .gpx-preview.is-compact {
-  margin-top: 12px;
   border: 0;
-  border-top: 1px solid var(--line);
   border-radius: 0;
+  background: transparent;
 }
 
 .gpx-preview.is-compact .track-sketch {
-  padding: 10px 8px 7px;
+  padding: 0;
+  background: transparent;
 }
 
 .gpx-preview.is-compact .track-sketch svg {
-  height: 118px;
-}
-
-.gpx-preview.is-compact .track-sketch figcaption {
-  font-size: 0.64rem;
-}
-
-.gpx-preview.is-compact .elevation-profile {
-  padding: 8px;
-}
-
-.gpx-preview.is-compact .elevation-profile figcaption {
-  font-size: 0.66rem;
-}
-
-.gpx-preview.is-compact .elevation-profile svg {
-  height: 42px;
+  height: 108px;
 }
 
 .gpx-preview > header {

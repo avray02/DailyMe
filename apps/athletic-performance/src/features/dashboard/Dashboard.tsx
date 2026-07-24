@@ -439,15 +439,26 @@ function PerformanceCard({
       </header>
 
       <button className="performance-card-main" type="button" onClick={onSelect}>
-        <div className="card-meta">
-          <span>
-            <CalendarDays size={15} aria-hidden="true" />
-            {formatDate(performance.date)}
-          </span>
-          <span className="activity-badge">Course</span>
+        <div
+          className={
+            performance.track ? 'card-summary has-track' : 'card-summary'
+          }
+        >
+          <div className="card-summary-copy">
+            <div className="card-meta">
+              <span>
+                <CalendarDays size={15} aria-hidden="true" />
+                {formatDate(performance.date)}
+              </span>
+              <span className="activity-badge">Course</span>
+            </div>
+            <h3>{performance.title}</h3>
+            <p className="sport-label">{sport.label}</p>
+          </div>
+          {performance.track ? (
+            <GpxTrackPreview track={performance.track} compact />
+          ) : null}
         </div>
-        <h3>{performance.title}</h3>
-        <p className="sport-label">{sport.label}</p>
 
         <div className="card-metrics">
           {visibleMetrics.map((metric, metricIndex) => (
@@ -457,10 +468,6 @@ function PerformanceCard({
             />
           ))}
         </div>
-
-        {performance.track ? (
-          <GpxTrackPreview track={performance.track} compact />
-        ) : null}
 
         <span className="details-link">
           Voir les details
