@@ -3,6 +3,7 @@ export type SportCategoryKey =
   | 'cycling'
   | 'swimming'
   | 'winter-sports'
+  | 'multisport'
 
 export type SportKey =
   | 'road-running'
@@ -15,6 +16,7 @@ export type SportKey =
   | 'ski-mountaineering'
   | 'cross-country-skiing-skating'
   | 'cross-country-skiing-classic'
+  | 'triathlon'
 
 export type ActivityTypeKey = 'race'
 export type ActivityDefinitionId = `${SportKey}__race`
@@ -29,11 +31,34 @@ export type RankingResult = {
 }
 
 export type RaceData = {
-  distanceMeters: number
+  distanceMeters?: number
   elevationGainMeters?: number
-  durationSeconds: number
+  durationSeconds?: number
   resultStatus: ResultStatus
-  rankings: Record<RankingKey, RankingResult>
+  rankings: Partial<Record<RankingKey, RankingResult>>
+  statusComment?: string
+}
+
+export type TriathlonDisciplineData = {
+  distanceMeters?: number
+  elevationGainMeters?: number
+  durationSeconds?: number
+  track?: SimplifiedGpxTrack
+}
+
+export type TriathlonData = {
+  disciplines: {
+    swimming: TriathlonDisciplineData
+    cycling: TriathlonDisciplineData
+    running: TriathlonDisciplineData
+  }
+  transitions: {
+    t1DurationSeconds?: number
+    t2DurationSeconds?: number
+  }
+  totalDurationSeconds?: number
+  resultStatus: ResultStatus
+  rankings: Partial<Record<RankingKey, RankingResult>>
   statusComment?: string
 }
 
@@ -83,7 +108,7 @@ export type Performance = {
   title: string
   status: 'completed'
   date: CalendarDate
-  data: RaceData
+  data: RaceData | TriathlonData
   track?: SimplifiedGpxTrack
   notes?: string
   tags: string[]
@@ -110,6 +135,20 @@ export type ActivityFieldDefinition = {
     | 'distanceMeters'
     | 'elevationGainMeters'
     | 'durationSeconds'
+    | 'swimDistanceMeters'
+    | 'swimDurationSeconds'
+    | 'swimTrack'
+    | 'transition1Seconds'
+    | 'bikeDistanceMeters'
+    | 'bikeElevationGainMeters'
+    | 'bikeDurationSeconds'
+    | 'bikeTrack'
+    | 'transition2Seconds'
+    | 'runDistanceMeters'
+    | 'runElevationGainMeters'
+    | 'runDurationSeconds'
+    | 'runTrack'
+    | 'totalDurationSeconds'
     | 'resultStatus'
     | 'rankings'
     | 'statusComment'
@@ -126,6 +165,7 @@ export type ActivityFieldDefinition = {
     | 'gpx'
     | 'text'
   required: boolean
+  storagePath?: string
   storageUnit?: 'm' | 's'
   inputUnits?: Array<'m' | 'km'>
   defaultInputUnit?: 'm' | 'km'

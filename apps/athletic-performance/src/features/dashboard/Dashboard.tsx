@@ -26,12 +26,14 @@ import { Link, useLocation } from 'react-router-dom'
 import type {
   Metric,
   Performance,
+  SimplifiedGpxTrack,
   SportCategoryKey,
   SportKey,
 } from '../../types/performance'
 import { GpxTrackPreview } from '../performance-form/GpxTrackPreview'
 import {
   categoryByKey,
+  isTriathlonData,
   sportByKey,
   sportCategories,
   sportOptions,
@@ -399,6 +401,8 @@ function PerformanceCard({
   const category = categoryByKey[performance.categoryKey]
   const SportIcon = sport.icon
   const visibleMetrics = getPerformanceMetrics(performance).slice(0, 4)
+  const performanceTracks = getPerformanceTracks(performance)
+  const primaryTrack = performanceTracks[0]?.track
   const style = {
     '--sport-accent': category.accent,
     '--sport-soft': category.softAccent,
@@ -441,7 +445,7 @@ function PerformanceCard({
       <button className="performance-card-main" type="button" onClick={onSelect}>
         <div
           className={
-            performance.track ? 'card-summary has-track' : 'card-summary'
+            primaryTrack ? 'card-summary has-track' : 'card-summary'
           }
         >
           <div className="card-summary-copy">
@@ -455,8 +459,8 @@ function PerformanceCard({
             <h3>{performance.title}</h3>
             <p className="sport-label">{sport.label}</p>
           </div>
-          {performance.track ? (
-            <GpxTrackPreview track={performance.track} compact />
+          {primaryTrack ? (
+            <GpxTrackPreview track={primaryTrack} compact />
           ) : null}
         </div>
 
@@ -516,6 +520,7 @@ function PerformanceDrawer({
   const SportIcon = sport.icon
   const metrics = getPerformanceMetrics(performance)
   const statusComment = getStatusComment(performance)
+  const performanceTracks = getPerformanceTracks(performance)
   const style = {
     '--sport-accent': category.accent,
     '--sport-soft': category.softAccent,
@@ -611,12 +616,16 @@ function PerformanceDrawer({
           </section>
         ) : null}
 
-        {performance.track ? (
-          <section className="drawer-section" aria-labelledby="track-title">
-            <h3 id="track-title">Trace et profil</h3>
-            <GpxTrackPreview track={performance.track} />
+        {performanceTracks.map(({ label, track }, index) => (
+          <section
+            className="drawer-section"
+            aria-labelledby={`track-title-${index}`}
+            key={label}
+          >
+            <h3 id={`track-title-${index}`}>{label}</h3>
+            <GpxTrackPreview track={track} />
           </section>
-        ) : null}
+        ))}
 
         {performance.notes ? (
           <section className="drawer-section" aria-labelledby="notes-title">
@@ -719,6 +728,30 @@ function EmptyState({ hasPerformances }: { hasPerformances: boolean }) {
       ) : null}
     </section>
   )
+}
+
+function getPerformanceTracks(performance: Performance) {
+  const tracks: Array<{ label: string; track: SimplifiedGpxTrack }> = []
+
+  if (isTriathlonData(performance.data)) {
+    const disciplines = [
+      ['Trace natation', performance.data.disciplines.swimming],
+      ['Trace cyclisme', performance.data.disciplines.cycling],
+      ['Trace course a pied', performance.data.disciplines.running],
+    ] as const
+
+    disciplines.forEach(([label, discipline]) => {
+      if (discipline.track) {
+        tracks.push({ label, track: discipline.track })
+      }
+    })
+    return tracks
+  }
+
+  if (performance.track) {
+    tracks.push({ label: 'Trace et profil', track: performance.track })
+  }
+  return tracks
 }
 
 function formatDate(date: Performance['date']) {

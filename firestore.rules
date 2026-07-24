@@ -30,24 +30,25 @@ service cloud.firestore {
     }
 
     function validStandardRanking(ranking) {
+      let rank = ranking.get('rank', 0);
+      let participantCount = ranking.get('participantCount', 0);
+
       return ranking is map
         && ranking.keys().hasOnly(['rank', 'participantCount'])
         && (
-          !('rank' in ranking)
-          || (ranking.rank is int && ranking.rank > 0)
-        )
-        && (
-          !('participantCount' in ranking)
+          ranking.keys().size() == 0
           || (
-            ranking.participantCount is int
-            && ranking.participantCount > 0
-            && 'rank' in ranking
+            rank is int
+            && rank > 0
+            && participantCount is int
+            && (
+              !ranking.keys().hasAny(['participantCount'])
+              || (
+                participantCount > 0
+                && participantCount - rank >= 0
+              )
+            )
           )
-        )
-        && (
-          !('rank' in ranking)
-          || !('participantCount' in ranking)
-          || ranking.participantCount >= ranking.rank
         );
     }
 
@@ -60,32 +61,67 @@ service cloud.firestore {
     function validRankings(data) {
       return data.rankings is map
         && data.rankings.keys().hasOnly(['sex', 'overall', 'category'])
-        && data.rankings.keys().hasAll(['sex', 'overall', 'category'])
         && (
           (
             data.resultStatus == 'ranked'
-            && validStandardRanking(data.rankings.sex)
-            && validStandardRanking(data.rankings.overall)
-            && validStandardRanking(data.rankings.category)
+            && (
+              !('sex' in data.rankings)
+              || validStandardRanking(data.rankings.sex)
+            )
+            && (
+              !('overall' in data.rankings)
+              || validStandardRanking(data.rankings.overall)
+            )
+            && (
+              !('category' in data.rankings)
+              || validStandardRanking(data.rankings.category)
+            )
             && !('statusComment' in data)
           )
           || (
             data.resultStatus == 'dnf'
-            && validStatusRanking(data.rankings.sex, -1)
-            && validStatusRanking(data.rankings.overall, -1)
-            && validStatusRanking(data.rankings.category, -1)
+            && (
+              !('sex' in data.rankings)
+              || validStatusRanking(data.rankings.sex, -1)
+            )
+            && (
+              !('overall' in data.rankings)
+              || validStatusRanking(data.rankings.overall, -1)
+            )
+            && (
+              !('category' in data.rankings)
+              || validStatusRanking(data.rankings.category, -1)
+            )
           )
           || (
             data.resultStatus == 'dsq'
-            && validStatusRanking(data.rankings.sex, -2)
-            && validStatusRanking(data.rankings.overall, -2)
-            && validStatusRanking(data.rankings.category, -2)
+            && (
+              !('sex' in data.rankings)
+              || validStatusRanking(data.rankings.sex, -2)
+            )
+            && (
+              !('overall' in data.rankings)
+              || validStatusRanking(data.rankings.overall, -2)
+            )
+            && (
+              !('category' in data.rankings)
+              || validStatusRanking(data.rankings.category, -2)
+            )
           )
           || (
             data.resultStatus == 'dns'
-            && validStatusRanking(data.rankings.sex, -3)
-            && validStatusRanking(data.rankings.overall, -3)
-            && validStatusRanking(data.rankings.category, -3)
+            && (
+              !('sex' in data.rankings)
+              || validStatusRanking(data.rankings.sex, -3)
+            )
+            && (
+              !('overall' in data.rankings)
+              || validStatusRanking(data.rankings.overall, -3)
+            )
+            && (
+              !('category' in data.rankings)
+              || validStatusRanking(data.rankings.category, -3)
+            )
           )
         )
         && (
@@ -192,7 +228,17 @@ service cloud.firestore {
           && request.resource.data.categoryKey == 'winter-sports'
           && request.resource.data.sportKey
             == 'cross-country-skiing-classic'
+        )
+        || (
+          request.resource.data.activityDefinitionId == 'triathlon__race'
+          && request.resource.data.categoryKey == 'multisport'
+          && request.resource.data.sportKey == 'triathlon'
         );
+    }
+
+    function isTriathlonDefinition() {
+      return request.resource.data.activityDefinitionId
+        == 'triathlon__race';
     }
 
     function isSwimmingDefinition() {
@@ -211,15 +257,27 @@ service cloud.firestore {
           'statusComment'
         ])
         && data.keys().hasAll([
-          'distanceMeters',
-          'durationSeconds',
           'resultStatus',
           'rankings'
         ])
-        && data.distanceMeters is int
-        && data.distanceMeters > 0
-        && data.durationSeconds is int
-        && data.durationSeconds > 0
+        && (
+          !('distanceMeters' in data)
+          || (
+            data.distanceMeters is int
+            && data.distanceMeters > 0
+          )
+        )
+        && (
+          !('durationSeconds' in data)
+          || (
+            data.durationSeconds is int
+            && data.durationSeconds > 0
+          )
+        )
+        && (
+          data.resultStatus == 'ranked'
+          || !('durationSeconds' in data)
+        )
         && (
           (
             isSwimmingDefinition()
@@ -227,8 +285,147 @@ service cloud.firestore {
           )
           || (
             !isSwimmingDefinition()
-            && data.elevationGainMeters is int
-            && data.elevationGainMeters >= 0
+            && (
+              !('elevationGainMeters' in data)
+              || (
+                data.elevationGainMeters is int
+                && data.elevationGainMeters >= 0
+              )
+            )
+          )
+        )
+        && validRankings(data);
+    }
+
+    function validTriathlonDiscipline(data, allowsElevation) {
+      return data is map
+        && data.keys().hasOnly([
+          'distanceMeters',
+          'elevationGainMeters',
+          'durationSeconds',
+          'track'
+        ])
+        && (
+          !('distanceMeters' in data)
+          || (
+            data.distanceMeters is int
+            && data.distanceMeters > 0
+          )
+        )
+        && (
+          !('durationSeconds' in data)
+          || (
+            data.durationSeconds is int
+            && data.durationSeconds > 0
+          )
+        )
+        && (
+          (
+            !allowsElevation
+            && !('elevationGainMeters' in data)
+          )
+          || (
+            allowsElevation
+            && (
+              !('elevationGainMeters' in data)
+              || (
+                data.elevationGainMeters is int
+                && data.elevationGainMeters >= 0
+              )
+            )
+          )
+        )
+        && (
+          !('track' in data)
+          || validTrack(data.track)
+        );
+    }
+
+    function validTriathlonData(data) {
+      let swimmingTime =
+        data.disciplines.swimming.get('durationSeconds', 0);
+      let cyclingTime =
+        data.disciplines.cycling.get('durationSeconds', 0);
+      let runningTime =
+        data.disciplines.running.get('durationSeconds', 0);
+      let t1Time = data.transitions.get('t1DurationSeconds', 0);
+      let t2Time = data.transitions.get('t2DurationSeconds', 0);
+      let calculatedTotal =
+        swimmingTime + t1Time + cyclingTime + t2Time + runningTime;
+
+      return data is map
+        && data.keys().hasOnly([
+          'disciplines',
+          'transitions',
+          'totalDurationSeconds',
+          'resultStatus',
+          'rankings',
+          'statusComment'
+        ])
+        && data.keys().hasAll([
+          'disciplines',
+          'transitions',
+          'resultStatus',
+          'rankings'
+        ])
+        && data.disciplines is map
+        && data.disciplines.keys().hasOnly([
+          'swimming',
+          'cycling',
+          'running'
+        ])
+        && data.disciplines.keys().hasAll([
+          'swimming',
+          'cycling',
+          'running'
+        ])
+        && validTriathlonDiscipline(
+          data.disciplines.swimming,
+          false
+        )
+        && validTriathlonDiscipline(
+          data.disciplines.cycling,
+          true
+        )
+        && validTriathlonDiscipline(
+          data.disciplines.running,
+          true
+        )
+        && data.transitions is map
+        && data.transitions.keys().hasOnly([
+          't1DurationSeconds',
+          't2DurationSeconds'
+        ])
+        && (
+          !('t1DurationSeconds' in data.transitions)
+          || (
+            data.transitions.t1DurationSeconds is int
+            && data.transitions.t1DurationSeconds > 0
+          )
+        )
+        && (
+          !('t2DurationSeconds' in data.transitions)
+          || (
+            data.transitions.t2DurationSeconds is int
+            && data.transitions.t2DurationSeconds > 0
+          )
+        )
+        && (
+          (
+            calculatedTotal == 0
+            && !('totalDurationSeconds' in data)
+          )
+          || (
+            calculatedTotal > 0
+            && data.totalDurationSeconds is int
+            && data.totalDurationSeconds == calculatedTotal
+          )
+        )
+        && (
+          data.resultStatus == 'ranked'
+          || (
+            calculatedTotal == 0
+            && !('totalDurationSeconds' in data)
           )
         )
         && validRankings(data);
@@ -280,7 +477,17 @@ service cloud.firestore {
         && request.resource.data.title.size() >= 2
         && request.resource.data.title.size() <= 120
         && validCalendarDate(request.resource.data.date)
-        && validRaceData(request.resource.data.data)
+        && (
+          (
+            isTriathlonDefinition()
+            && validTriathlonData(request.resource.data.data)
+            && !('track' in request.resource.data)
+          )
+          || (
+            !isTriathlonDefinition()
+            && validRaceData(request.resource.data.data)
+          )
+        )
         && (
           !('track' in request.resource.data)
           || validTrack(request.resource.data.track)

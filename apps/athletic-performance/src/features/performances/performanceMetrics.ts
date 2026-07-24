@@ -2,76 +2,203 @@ import type {
   MedalKind,
   Metric,
   Performance,
+  RaceData,
   RankingResult,
+  TriathlonData,
+  TriathlonDisciplineData,
 } from '../../types/performance'
 import {
   getMedalForRank,
+  isTriathlonData,
   resultStatusLabels,
 } from './performanceCatalog'
 
 export function getPerformanceMetrics(performance: Performance): Metric[] {
-  const metrics: Metric[] = [
-    {
+  if (isTriathlonData(performance.data)) {
+    return getTriathlonMetrics(performance.data)
+  }
+
+  return getSingleSportMetrics(performance, performance.data)
+}
+
+function getSingleSportMetrics(
+  performance: Performance,
+  data: RaceData,
+): Metric[] {
+  const metrics: Metric[] = []
+  const { distanceMeters, durationSeconds } = data
+
+  if (typeof distanceMeters === 'number' && distanceMeters > 0) {
+    metrics.push({
       key: 'distance',
       label: 'Distance',
-      value: formatDistance(performance.data.distanceMeters),
-      normalizedValue: performance.data.distanceMeters,
-    },
-  ]
+      value: formatDistance(distanceMeters),
+      normalizedValue: distanceMeters,
+    })
+  }
 
-  if (typeof performance.data.elevationGainMeters === 'number') {
+  if (typeof data.elevationGainMeters === 'number') {
     metrics.push({
       key: 'elevation',
       label: 'Denivele positif',
-      value: `${formatInteger(performance.data.elevationGainMeters)} m`,
-      normalizedValue: performance.data.elevationGainMeters,
+      value: `${formatInteger(data.elevationGainMeters)} m`,
+      normalizedValue: data.elevationGainMeters,
     })
   }
 
-  metrics.push({
-    key: 'duration',
-    label: 'Temps',
-    value: formatDuration(performance.data.durationSeconds),
-    normalizedValue: performance.data.durationSeconds,
-  })
+  if (typeof durationSeconds === 'number' && durationSeconds > 0) {
+    metrics.push({
+      key: 'duration',
+      label: 'Temps',
+      value: formatDuration(durationSeconds),
+      normalizedValue: durationSeconds,
+    })
+  }
 
   if (
-    performance.categoryKey === 'running' ||
-    performance.categoryKey === 'swimming'
+    typeof distanceMeters === 'number' &&
+    distanceMeters > 0 &&
+    typeof durationSeconds === 'number' &&
+    durationSeconds > 0
+  ) {
+    if (
+      performance.categoryKey === 'running' ||
+      performance.categoryKey === 'swimming'
+    ) {
+      metrics.push({
+        key: 'pace',
+        label:
+          performance.categoryKey === 'swimming'
+            ? 'Allure moyenne'
+            : 'Rythme moyen',
+        value: formatPace(
+          distanceMeters,
+          durationSeconds,
+          performance.categoryKey === 'swimming' ? 100 : 1000,
+        ),
+      })
+    } else {
+      metrics.push({
+        key: 'speed',
+        label: 'Vitesse moyenne',
+        value: formatSpeed(distanceMeters, durationSeconds),
+      })
+    }
+  }
+
+  appendResultMetrics(metrics, data)
+  return metrics
+}
+
+function getTriathlonMetrics(data: TriathlonData) {
+  const metrics: Metric[] = []
+  if (
+    typeof data.totalDurationSeconds === 'number' &&
+    data.totalDurationSeconds > 0
   ) {
     metrics.push({
-      key: 'pace',
-      label:
-        performance.categoryKey === 'swimming'
-          ? 'Allure moyenne'
-          : 'Rythme moyen',
-      value: formatPace(
-        performance.data.distanceMeters,
-        performance.data.durationSeconds,
-        performance.categoryKey === 'swimming' ? 100 : 1000,
-      ),
-    })
-  } else {
-    metrics.push({
-      key: 'speed',
-      label: 'Vitesse moyenne',
-      value: formatSpeed(
-        performance.data.distanceMeters,
-        performance.data.durationSeconds,
-      ),
+      key: 'duration',
+      label: 'Temps total',
+      value: formatDuration(data.totalDurationSeconds),
+      normalizedValue: data.totalDurationSeconds,
     })
   }
 
+  appendDisciplineMetric(
+    metrics,
+    'Natation',
+    data.disciplines.swimming,
+    'swimming',
+  )
+  appendDisciplineMetric(
+    metrics,
+    'Cyclisme',
+    data.disciplines.cycling,
+    'cycling',
+  )
+  appendDisciplineMetric(
+    metrics,
+    'Course a pied',
+    data.disciplines.running,
+    'running',
+  )
+
+  if (typeof data.transitions.t1DurationSeconds === 'number') {
+    metrics.push({
+      key: 'duration',
+      label: 'Transition T1',
+      value: formatDuration(data.transitions.t1DurationSeconds),
+    })
+  }
+  if (typeof data.transitions.t2DurationSeconds === 'number') {
+    metrics.push({
+      key: 'duration',
+      label: 'Transition T2',
+      value: formatDuration(data.transitions.t2DurationSeconds),
+    })
+  }
+
+  appendResultMetrics(metrics, data)
+  return metrics
+}
+
+function appendDisciplineMetric(
+  metrics: Metric[],
+  label: string,
+  discipline: TriathlonDisciplineData,
+  kind: 'swimming' | 'cycling' | 'running',
+) {
+  const values: string[] = []
+  if (typeof discipline.distanceMeters === 'number') {
+    values.push(formatDistance(discipline.distanceMeters))
+  }
+  if (typeof discipline.durationSeconds === 'number') {
+    values.push(formatDuration(discipline.durationSeconds))
+  }
+  if (
+    typeof discipline.distanceMeters === 'number' &&
+    typeof discipline.durationSeconds === 'number'
+  ) {
+    values.push(
+      kind === 'cycling'
+        ? formatSpeed(
+            discipline.distanceMeters,
+            discipline.durationSeconds,
+          )
+        : formatPace(
+            discipline.distanceMeters,
+            discipline.durationSeconds,
+            kind === 'swimming' ? 100 : 1000,
+          ),
+    )
+  }
+  if (typeof discipline.elevationGainMeters === 'number') {
+    values.push(`${formatInteger(discipline.elevationGainMeters)} m D+`)
+  }
+
+  if (values.length) {
+    metrics.push({
+      key: 'custom',
+      label,
+      value: values.join(' - '),
+    })
+  }
+}
+
+function appendResultMetrics(
+  metrics: Metric[],
+  data: Pick<RaceData, 'rankings' | 'resultStatus'>,
+) {
   const primaryRanking =
-    typeof performance.data.rankings.sex.rank === 'number'
+    typeof data.rankings.sex?.rank === 'number'
       ? {
           label: 'Classement sexe',
-          value: performance.data.rankings.sex,
+          value: data.rankings.sex,
         }
-      : typeof performance.data.rankings.overall.rank === 'number'
+      : typeof data.rankings.overall?.rank === 'number'
         ? {
             label: 'Classement general',
-            value: performance.data.rankings.overall,
+            value: data.rankings.overall,
           }
         : null
 
@@ -79,16 +206,22 @@ export function getPerformanceMetrics(performance: Performance): Metric[] {
     metrics.push(toRankingMetric(primaryRanking.label, primaryRanking.value))
   }
 
-  if (typeof performance.data.rankings.category.rank === 'number') {
+  if (typeof data.rankings.category?.rank === 'number') {
     metrics.push(
       toRankingMetric(
         'Classement categorie',
-        performance.data.rankings.category,
+        data.rankings.category,
       ),
     )
   }
 
-  return metrics
+  if (data.resultStatus !== 'ranked' && !primaryRanking) {
+    metrics.push({
+      key: 'rank',
+      label: 'Statut',
+      value: resultStatusLabels[data.resultStatus],
+    })
+  }
 }
 
 export function getStatusComment(performance: Performance) {

@@ -952,7 +952,7 @@ a {
 }
 
 .category-selection-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .category-selection-grid .selection-choice {
@@ -1135,6 +1135,207 @@ a {
   display: grid;
   min-width: 0;
   gap: 20px;
+}
+
+.triathlon-course-flow {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.triathlon-discipline {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: var(--surface-subtle);
+}
+
+.triathlon-discipline > header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.triathlon-discipline > header > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.triathlon-discipline > header small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.triathlon-discipline > header strong {
+  color: var(--ink-strong);
+  font-size: 0.94rem;
+}
+
+.triathlon-discipline-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.triathlon-discipline-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(260px, 1.4fr);
+  gap: 14px;
+}
+
+.triathlon-discipline-grid.without-time {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.triathlon-discipline-grid > label,
+.compact-duration label {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 7px;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 720;
+}
+
+.triathlon-discipline-grid input,
+.triathlon-discipline-grid select,
+.compact-duration input {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 10px;
+  background: var(--surface);
+  color: var(--ink);
+  outline: 0;
+}
+
+.triathlon-discipline-grid input:focus,
+.triathlon-discipline-grid select:focus,
+.compact-duration input:focus {
+  border-color: var(--accent);
+}
+
+.triathlon-discipline-grid small,
+.compact-duration small {
+  color: var(--danger);
+  font-size: 0.72rem;
+}
+
+.compact-duration {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.compact-duration > legend {
+  margin-bottom: 7px;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 720;
+}
+
+.compact-duration > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.compact-duration label > span {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.triathlon-transition {
+  display: grid;
+  grid-template-columns: 42px minmax(140px, 0.7fr) minmax(280px, 1.3fr);
+  align-items: center;
+  gap: 12px;
+  padding: 4px 18px;
+}
+
+.transition-name {
+  color: var(--accent);
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.transition-copy {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.compact-duration.is-transition {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.compact-duration.is-transition > legend {
+  margin: 0;
+}
+
+.triathlon-total {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  gap: 12px;
+  border-left: 3px solid var(--accent);
+  padding: 8px 14px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.triathlon-total > span {
+  display: grid;
+  gap: 3px;
+}
+
+.triathlon-total small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.triathlon-total strong {
+  color: var(--ink-strong);
+  font-size: 0.94rem;
+}
+
+.triathlon-gpx-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.labeled-gpx-field {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.labeled-gpx-field h3 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 0.82rem;
 }
 
 .danger-button {
@@ -1710,8 +1911,25 @@ a {
   .metric-fields,
   .selection-grid,
   .duration-inputs,
-  .date-selector > div {
+  .date-selector > div,
+  .triathlon-discipline-grid,
+  .triathlon-gpx-grid {
     grid-template-columns: 1fr;
+  }
+
+  .triathlon-discipline-grid.without-time {
+    grid-template-columns: 1fr;
+  }
+
+  .triathlon-transition,
+  .compact-duration.is-transition {
+    grid-template-columns: 1fr;
+  }
+
+  .triathlon-transition {
+    border-left: 2px solid var(--line);
+    margin-left: 16px;
+    padding: 8px 14px;
   }
 
   .result-status-row {

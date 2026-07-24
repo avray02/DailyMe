@@ -18,6 +18,7 @@ import {
   definitionById,
   definitionHasField,
   isRaceData,
+  isTriathlonData,
 } from './performanceCatalog'
 
 const localStorageKey = 'athletic-performance.records-v3'
@@ -128,6 +129,20 @@ function parsePerformance(
     typeof data.activityDefinitionId === 'string'
       ? definitionById[data.activityDefinitionId]
       : undefined
+  const performanceDataIsValid =
+    definition?.sportKey === 'triathlon'
+      ? isTriathlonData(data.data)
+      : Boolean(
+          definition &&
+            isRaceData(
+              data.data,
+              definitionHasField(definition, 'elevationGainMeters'),
+            ),
+        )
+  const topLevelTrackIsValid =
+    typeof data.track === 'undefined' ||
+    (Boolean(definition && definitionHasField(definition, 'track')) &&
+      isValidTrack(data.track))
 
   if (
     !id ||
@@ -138,11 +153,8 @@ function parsePerformance(
     data.sportKey !== definition.sportKey ||
     data.activityTypeKey !== 'race' ||
     !isValidCalendarDate(data.date) ||
-    !isRaceData(
-      data.data,
-      definitionHasField(definition, 'elevationGainMeters'),
-    ) ||
-    (typeof data.track !== 'undefined' && !isValidTrack(data.track))
+    !performanceDataIsValid ||
+    !topLevelTrackIsValid
   ) {
     return null
   }

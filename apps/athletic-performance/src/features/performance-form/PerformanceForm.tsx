@@ -3,8 +3,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
+  Bike,
   CalendarDays,
   Flag,
+  Footprints,
   Medal,
   Mountain,
   Route,
@@ -12,6 +14,7 @@ import {
   Timer,
   Trophy,
   Users,
+  Waves,
 } from 'lucide-react'
 import { useEffect, useMemo, type CSSProperties, type ReactNode } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
@@ -19,10 +22,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import type {
   ActivityDefinition,
   Performance,
+  RaceData,
   RankingResult,
   ResultStatus,
+  SimplifiedGpxTrack,
   SportCategoryKey,
   SportKey,
+  TriathlonData,
 } from '../../types/performance'
 import {
   performanceSchema,
@@ -33,7 +39,7 @@ import {
   activityDefinitions,
   categoryByKey,
   definitionHasField,
-  resultSentinels,
+  isTriathlonData,
   resultStatusLabels,
   sportByKey,
   sportCategories,
@@ -82,6 +88,15 @@ export function PerformanceForm({ performance }: PerformanceFormProps) {
   const month = watch('month')
   const day = watch('day')
   const track = watch('track')
+  const swimTrack = watch('swimTrack')
+  const bikeTrack = watch('bikeTrack')
+  const runTrack = watch('runTrack')
+  const watchedValues = watch()
+  const isTriathlon = selectedSport === 'triathlon'
+  const triathlonTotalSeconds =
+    isTriathlon && resultStatus === 'ranked'
+      ? calculateTriathlonTotal(watchedValues)
+      : 0
   const selectedDefinition = definitions.find(
     (definition) => definition.sportKey === selectedSport,
   )
@@ -129,9 +144,19 @@ export function PerformanceForm({ performance }: PerformanceFormProps) {
     onError: (error) => {
       console.error('Firebase performance save failed:', error)
     },
-    onSuccess: async () => {
+    onSuccess: async (_result, savedPerformance) => {
+      queryClient.setQueryData<Performance[]>(
+        ['performances', ownerUid],
+        (performances = []) => [
+          savedPerformance,
+          ...performances.filter(
+            (candidate) => candidate.id !== savedPerformance.id,
+          ),
+        ],
+      )
       await queryClient.invalidateQueries({
         queryKey: ['performances', ownerUid],
+        refetchType: 'active',
       })
       navigate('/', {
         replace: true,
@@ -165,8 +190,45 @@ export function PerformanceForm({ performance }: PerformanceFormProps) {
     setValue('categoryKey', definition.categoryKey, { shouldDirty: true })
     if (!definitionHasField(definition, 'elevationGainMeters')) {
       setValue('elevationGainMeters', undefined)
+    } else {
+      setValue('elevationGainMeters', 0)
     }
     clearErrors(['categoryKey', 'sportKey', 'activityDefinitionId'])
+  }
+
+  function selectResultStatus(status: ResultStatus) {
+    setValue('resultStatus', status, { shouldDirty: true })
+    if (status !== 'ranked') {
+      setValue('durationHours', 0, { shouldDirty: true })
+      setValue('durationMinutes', 0, { shouldDirty: true })
+      setValue('durationSeconds', 0, { shouldDirty: true })
+      const triathlonDurationFields = [
+        'swimDurationHours',
+        'swimDurationMinutes',
+        'swimDurationSeconds',
+        'transition1Hours',
+        'transition1Minutes',
+        'transition1Seconds',
+        'bikeDurationHours',
+        'bikeDurationMinutes',
+        'bikeDurationSeconds',
+        'transition2Hours',
+        'transition2Minutes',
+        'transition2Seconds',
+        'runDurationHours',
+        'runDurationMinutes',
+        'runDurationSeconds',
+      ] as const
+      triathlonDurationFields.forEach((field) =>
+        setValue(field, 0, { shouldDirty: true }),
+      )
+      clearErrors([
+        'durationHours',
+        'durationMinutes',
+        'durationSeconds',
+        ...triathlonDurationFields,
+      ])
+    }
   }
 
   function submit(values: PerformanceWizardValues) {
@@ -298,64 +360,76 @@ export function PerformanceForm({ performance }: PerformanceFormProps) {
 
         <FormSection
           number="03"
-          title="Parcours"
-          description="Les valeurs sont conservees dans leurs unites canoniques."
+          title={isTriathlon ? 'Disciplines et transitions' : 'Parcours'}
+          description={
+            isTriathlon
+              ? 'Renseigne les trois disciplines dans leur ordre de course.'
+              : 'Les valeurs sont conservees dans leurs unites canoniques.'
+          }
         >
-          <div className="form-grid metric-fields">
-            <label>
-              <span>
-                <Route size={16} aria-hidden="true" />
-                Distance
-              </span>
-              <span className="measurement-input">
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  {...register('distanceValue', {
-                    setValueAs: requiredNumber,
-                  })}
-                />
-                <select
-                  aria-label="Unite de distance"
-                  {...register('distanceUnit')}
-                >
-                  <option value="km">km</option>
-                  <option value="m">m</option>
-                </select>
-              </span>
-              <small className="field-hint">
-                Enregistrement :{' '}
-                {distanceUnit === 'km' ? 'conversion en metres' : 'metres'}
-              </small>
-              {errors.distanceValue ? (
-                <small>{errors.distanceValue.message}</small>
-              ) : null}
-            </label>
-
-            {definitionHasField(
-              selectedDefinition,
-              'elevationGainMeters',
-            ) ? (
+          {isTriathlon ? (
+            <TriathlonCourseFields
+              register={register}
+              errors={errors}
+              showTimes={resultStatus === 'ranked'}
+            />
+          ) : (
+            <div className="form-grid metric-fields">
               <label>
                 <span>
-                  <Mountain size={16} aria-hidden="true" />
-                  Denivele positif (m)
+                  <Route size={16} aria-hidden="true" />
+                  Distance
                 </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  {...register('elevationGainMeters', {
-                    setValueAs: optionalNumber,
-                  })}
-                />
-                {errors.elevationGainMeters ? (
-                  <small>{errors.elevationGainMeters.message}</small>
+                <span className="measurement-input">
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    {...register('distanceValue', {
+                      setValueAs: optionalNumber,
+                    })}
+                  />
+                  <select
+                    aria-label="Unite de distance"
+                    {...register('distanceUnit')}
+                  >
+                    <option value="km">km</option>
+                    <option value="m">m</option>
+                  </select>
+                </span>
+                <small className="field-hint">
+                  Enregistrement :{' '}
+                  {distanceUnit === 'km' ? 'conversion en metres' : 'metres'}
+                </small>
+                {errors.distanceValue ? (
+                  <small>{errors.distanceValue.message}</small>
                 ) : null}
               </label>
-            ) : null}
-          </div>
+
+              {definitionHasField(
+                selectedDefinition,
+                'elevationGainMeters',
+              ) ? (
+                <label>
+                  <span>
+                    <Mountain size={16} aria-hidden="true" />
+                    Denivele positif (m)
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    {...register('elevationGainMeters', {
+                      setValueAs: optionalNumber,
+                    })}
+                  />
+                  {errors.elevationGainMeters ? (
+                    <small>{errors.elevationGainMeters.message}</small>
+                  ) : null}
+                </label>
+              ) : null}
+            </div>
+          )}
         </FormSection>
 
         <FormSection
@@ -364,7 +438,23 @@ export function PerformanceForm({ performance }: PerformanceFormProps) {
           description="Le classement par sexe est propose en premier."
         >
           <div className="result-fields">
-            <DurationField register={register} errors={errors} />
+            {resultStatus === 'ranked' && !isTriathlon ? (
+              <DurationField register={register} errors={errors} />
+            ) : null}
+
+            {resultStatus === 'ranked' && isTriathlon ? (
+              <div className="triathlon-total" aria-live="polite">
+                <Timer size={19} aria-hidden="true" />
+                <span>
+                  <small>Temps total calcule</small>
+                  <strong>
+                    {triathlonTotalSeconds > 0
+                      ? formatDurationInput(triathlonTotalSeconds)
+                      : 'Non renseigne'}
+                  </strong>
+                </span>
+              </div>
+            ) : null}
 
             <div>
               <span className="field-group-label">Statut du resultat</span>
@@ -379,9 +469,7 @@ export function PerformanceForm({ performance }: PerformanceFormProps) {
                     key={status}
                     type="button"
                     aria-pressed={resultStatus === status}
-                    onClick={() =>
-                      setValue('resultStatus', status, { shouldDirty: true })
-                    }
+                    onClick={() => selectResultStatus(status)}
                   >
                     {resultStatusLabels[status]}
                   </button>
@@ -454,17 +542,47 @@ export function PerformanceForm({ performance }: PerformanceFormProps) {
 
         <FormSection
           number="05"
-          title="Trace GPX"
-          description="Le fichier est simplifie pour dessiner le parcours et son profil."
+          title={isTriathlon ? 'Traces GPX' : 'Trace GPX'}
+          description={
+            isTriathlon
+              ? 'Chaque discipline conserve sa propre trace simplifiee.'
+              : 'Le fichier est simplifie pour dessiner le parcours et son profil.'
+          }
         >
-          <div className="gpx-form-field">
-            <GpxTrackField
-              track={track}
-              onChange={(nextTrack) =>
-                setValue('track', nextTrack, { shouldDirty: true })
-              }
-            />
-          </div>
+          {isTriathlon ? (
+            <div className="triathlon-gpx-grid">
+              <LabeledGpxField
+                label="Natation"
+                track={swimTrack}
+                onChange={(nextTrack) =>
+                  setValue('swimTrack', nextTrack, { shouldDirty: true })
+                }
+              />
+              <LabeledGpxField
+                label="Cyclisme sur route"
+                track={bikeTrack}
+                onChange={(nextTrack) =>
+                  setValue('bikeTrack', nextTrack, { shouldDirty: true })
+                }
+              />
+              <LabeledGpxField
+                label="Course a pied"
+                track={runTrack}
+                onChange={(nextTrack) =>
+                  setValue('runTrack', nextTrack, { shouldDirty: true })
+                }
+              />
+            </div>
+          ) : (
+            <div className="gpx-form-field">
+              <GpxTrackField
+                track={track}
+                onChange={(nextTrack) =>
+                  setValue('track', nextTrack, { shouldDirty: true })
+                }
+              />
+            </div>
+          )}
         </FormSection>
 
         <FormSection
@@ -534,6 +652,334 @@ function FormSection({
         </div>
       </header>
       {children}
+    </section>
+  )
+}
+
+type FormRegister = ReturnType<
+  typeof useForm<PerformanceWizardValues>
+>['register']
+type FormErrors = ReturnType<
+  typeof useForm<PerformanceWizardValues>
+>['formState']['errors']
+type TriathlonDistanceField =
+  | 'swimDistanceValue'
+  | 'bikeDistanceValue'
+  | 'runDistanceValue'
+type TriathlonDistanceUnitField =
+  | 'swimDistanceUnit'
+  | 'bikeDistanceUnit'
+  | 'runDistanceUnit'
+type TriathlonElevationField =
+  | 'bikeElevationGainMeters'
+  | 'runElevationGainMeters'
+type DurationFieldNames = {
+  hours:
+    | 'swimDurationHours'
+    | 'transition1Hours'
+    | 'bikeDurationHours'
+    | 'transition2Hours'
+    | 'runDurationHours'
+  minutes:
+    | 'swimDurationMinutes'
+    | 'transition1Minutes'
+    | 'bikeDurationMinutes'
+    | 'transition2Minutes'
+    | 'runDurationMinutes'
+  seconds:
+    | 'swimDurationSeconds'
+    | 'transition1Seconds'
+    | 'bikeDurationSeconds'
+    | 'transition2Seconds'
+    | 'runDurationSeconds'
+}
+
+function TriathlonCourseFields({
+  register,
+  errors,
+  showTimes,
+}: {
+  register: FormRegister
+  errors: FormErrors
+  showTimes: boolean
+}) {
+  return (
+    <div className="triathlon-course-flow">
+      <TriathlonDisciplineFields
+        number="1"
+        label="Natation"
+        icon={<Waves size={19} aria-hidden="true" />}
+        distanceField="swimDistanceValue"
+        distanceUnitField="swimDistanceUnit"
+        durationFields={{
+          hours: 'swimDurationHours',
+          minutes: 'swimDurationMinutes',
+          seconds: 'swimDurationSeconds',
+        }}
+        register={register}
+        errors={errors}
+        showTime={showTimes}
+      />
+      {showTimes ? (
+        <TransitionFields
+          label="T1"
+          description="Natation vers cyclisme"
+          fields={{
+            hours: 'transition1Hours',
+            minutes: 'transition1Minutes',
+            seconds: 'transition1Seconds',
+          }}
+          register={register}
+          errors={errors}
+        />
+      ) : null}
+      <TriathlonDisciplineFields
+        number="2"
+        label="Cyclisme sur route"
+        icon={<Bike size={19} aria-hidden="true" />}
+        distanceField="bikeDistanceValue"
+        distanceUnitField="bikeDistanceUnit"
+        elevationField="bikeElevationGainMeters"
+        durationFields={{
+          hours: 'bikeDurationHours',
+          minutes: 'bikeDurationMinutes',
+          seconds: 'bikeDurationSeconds',
+        }}
+        register={register}
+        errors={errors}
+        showTime={showTimes}
+      />
+      {showTimes ? (
+        <TransitionFields
+          label="T2"
+          description="Cyclisme vers course a pied"
+          fields={{
+            hours: 'transition2Hours',
+            minutes: 'transition2Minutes',
+            seconds: 'transition2Seconds',
+          }}
+          register={register}
+          errors={errors}
+        />
+      ) : null}
+      <TriathlonDisciplineFields
+        number="3"
+        label="Course a pied"
+        icon={<Footprints size={19} aria-hidden="true" />}
+        distanceField="runDistanceValue"
+        distanceUnitField="runDistanceUnit"
+        elevationField="runElevationGainMeters"
+        durationFields={{
+          hours: 'runDurationHours',
+          minutes: 'runDurationMinutes',
+          seconds: 'runDurationSeconds',
+        }}
+        register={register}
+        errors={errors}
+        showTime={showTimes}
+      />
+    </div>
+  )
+}
+
+function TriathlonDisciplineFields({
+  number,
+  label,
+  icon,
+  distanceField,
+  distanceUnitField,
+  elevationField,
+  durationFields,
+  register,
+  errors,
+  showTime,
+}: {
+  number: string
+  label: string
+  icon: ReactNode
+  distanceField: TriathlonDistanceField
+  distanceUnitField: TriathlonDistanceUnitField
+  elevationField?: TriathlonElevationField
+  durationFields: DurationFieldNames
+  register: FormRegister
+  errors: FormErrors
+  showTime: boolean
+}) {
+  return (
+    <article className="triathlon-discipline">
+      <header>
+        <span className="triathlon-discipline-icon">{icon}</span>
+        <span>
+          <small>Discipline {number}</small>
+          <strong>{label}</strong>
+        </span>
+      </header>
+      <div
+        className={
+          showTime
+            ? 'triathlon-discipline-grid'
+            : 'triathlon-discipline-grid without-time'
+        }
+      >
+        <label>
+          <span>Distance</span>
+          <span className="measurement-input">
+            <input
+              type="number"
+              min="0"
+              step="any"
+              {...register(distanceField, { setValueAs: optionalNumber })}
+            />
+            <select
+              aria-label={`Unite de distance ${label}`}
+              {...register(distanceUnitField)}
+            >
+              <option value="km">km</option>
+              <option value="m">m</option>
+            </select>
+          </span>
+          <FieldError errors={errors} field={distanceField} />
+        </label>
+        {elevationField ? (
+          <label>
+            <span>Denivele positif (m)</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              {...register(elevationField, { setValueAs: optionalNumber })}
+            />
+            <FieldError errors={errors} field={elevationField} />
+          </label>
+        ) : null}
+        {showTime ? (
+          <CompactDurationInputs
+            label={`Temps ${label.toLowerCase()}`}
+            fields={durationFields}
+            register={register}
+            errors={errors}
+          />
+        ) : null}
+      </div>
+    </article>
+  )
+}
+
+function TransitionFields({
+  label,
+  description,
+  fields,
+  register,
+  errors,
+}: {
+  label: string
+  description: string
+  fields: DurationFieldNames
+  register: FormRegister
+  errors: FormErrors
+}) {
+  return (
+    <div className="triathlon-transition">
+      <span className="transition-name">{label}</span>
+      <span className="transition-copy">{description}</span>
+      <CompactDurationInputs
+        label={`Temps ${label}`}
+        fields={fields}
+        register={register}
+        errors={errors}
+        compact
+      />
+    </div>
+  )
+}
+
+function CompactDurationInputs({
+  label,
+  fields,
+  register,
+  errors,
+  compact = false,
+}: {
+  label: string
+  fields: DurationFieldNames
+  register: FormRegister
+  errors: FormErrors
+  compact?: boolean
+}) {
+  return (
+    <fieldset
+      className={
+        compact
+          ? 'compact-duration is-transition'
+          : 'compact-duration'
+      }
+    >
+      <legend>{label}</legend>
+      <div>
+        <label>
+          <span>H</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            aria-label={`${label}, heures`}
+            {...register(fields.hours, { setValueAs: optionalNumber })}
+          />
+          <FieldError errors={errors} field={fields.hours} />
+        </label>
+        <label>
+          <span>M</span>
+          <input
+            type="number"
+            min="0"
+            max="59"
+            step="1"
+            aria-label={`${label}, minutes`}
+            {...register(fields.minutes, { setValueAs: optionalNumber })}
+          />
+          <FieldError errors={errors} field={fields.minutes} />
+        </label>
+        <label>
+          <span>S</span>
+          <input
+            type="number"
+            min="0"
+            max="59"
+            step="1"
+            aria-label={`${label}, secondes`}
+            {...register(fields.seconds, { setValueAs: optionalNumber })}
+          />
+          <FieldError errors={errors} field={fields.seconds} />
+        </label>
+      </div>
+    </fieldset>
+  )
+}
+
+function FieldError({
+  errors,
+  field,
+}: {
+  errors: FormErrors
+  field: keyof PerformanceWizardValues
+}) {
+  const message = errors[field]?.message
+  return typeof message === 'string' ? <small>{message}</small> : null
+}
+
+function LabeledGpxField({
+  label,
+  track,
+  onChange,
+}: {
+  label: string
+  track?: SimplifiedGpxTrack
+  onChange: (track?: SimplifiedGpxTrack) => void
+}) {
+  return (
+    <section className="labeled-gpx-field">
+      <h3>{label}</h3>
+      <GpxTrackField track={track} onChange={onChange} />
     </section>
   )
 }
@@ -609,7 +1055,6 @@ function DurationField({
       <legend>
         <Timer size={16} aria-hidden="true" />
         Temps
-        <small>obligatoire</small>
       </legend>
       <div className="duration-inputs">
         <label>
@@ -618,7 +1063,7 @@ function DurationField({
             type="number"
             min="0"
             step="1"
-            {...register('durationHours', { setValueAs: requiredNumber })}
+            {...register('durationHours', { setValueAs: optionalNumber })}
           />
           {errors.durationHours ? (
             <small>{errors.durationHours.message}</small>
@@ -631,7 +1076,7 @@ function DurationField({
             min="0"
             max="59"
             step="1"
-            {...register('durationMinutes', { setValueAs: requiredNumber })}
+            {...register('durationMinutes', { setValueAs: optionalNumber })}
           />
           {errors.durationMinutes ? (
             <small>{errors.durationMinutes.message}</small>
@@ -644,7 +1089,7 @@ function DurationField({
             min="0"
             max="59"
             step="1"
-            {...register('durationSeconds', { setValueAs: requiredNumber })}
+            {...register('durationSeconds', { setValueAs: optionalNumber })}
           />
           {errors.durationSeconds ? (
             <small>{errors.durationSeconds.message}</small>
@@ -715,12 +1160,31 @@ function getDefaultValues(
   performance?: Performance,
 ): PerformanceWizardValues {
   const today = new Date()
-  const durationSeconds = performance?.data.durationSeconds
-  const emptyNumber = undefined as unknown as number
   const definition =
     activityDefinitions.find(
       (candidate) => candidate.id === performance?.activityDefinitionId,
     ) ?? activityDefinitions[0]
+  const triathlonData = isTriathlonData(performance?.data)
+    ? performance.data
+    : undefined
+  const raceData =
+    performance && !triathlonData ? (performance.data as RaceData) : undefined
+  const duration = toDurationParts(raceData?.durationSeconds)
+  const swimDuration = toDurationParts(
+    triathlonData?.disciplines.swimming.durationSeconds,
+  )
+  const bikeDuration = toDurationParts(
+    triathlonData?.disciplines.cycling.durationSeconds,
+  )
+  const runDuration = toDurationParts(
+    triathlonData?.disciplines.running.durationSeconds,
+  )
+  const transition1 = toDurationParts(
+    triathlonData?.transitions.t1DurationSeconds,
+  )
+  const transition2 = toDurationParts(
+    triathlonData?.transitions.t2DurationSeconds,
+  )
 
   return {
     categoryKey: definition.categoryKey,
@@ -730,37 +1194,67 @@ function getDefaultValues(
     year: performance?.date.year ?? today.getFullYear(),
     month: performance?.date.month ?? today.getMonth() + 1,
     day: performance?.date.day ?? today.getDate(),
-    distanceValue: performance
-      ? performance.data.distanceMeters / 1000
-      : emptyNumber,
+    distanceValue:
+      typeof raceData?.distanceMeters === 'number'
+        ? raceData.distanceMeters / 1000
+        : 0,
     distanceUnit: 'km',
-    elevationGainMeters: performance?.data.elevationGainMeters,
-    durationHours:
-      typeof durationSeconds === 'number'
-        ? Math.floor(durationSeconds / 3600)
-        : emptyNumber,
-    durationMinutes:
-      typeof durationSeconds === 'number'
-        ? Math.floor((durationSeconds % 3600) / 60)
-        : emptyNumber,
-    durationSeconds:
-      typeof durationSeconds === 'number'
-        ? durationSeconds % 60
-        : emptyNumber,
+    elevationGainMeters: definitionHasField(
+      definition,
+      'elevationGainMeters',
+    )
+      ? (raceData?.elevationGainMeters ?? 0)
+      : undefined,
+    durationHours: duration.hours,
+    durationMinutes: duration.minutes,
+    durationSeconds: duration.seconds,
+    swimDistanceValue:
+      (triathlonData?.disciplines.swimming.distanceMeters ?? 0) / 1000,
+    swimDistanceUnit: 'km',
+    swimDurationHours: swimDuration.hours,
+    swimDurationMinutes: swimDuration.minutes,
+    swimDurationSeconds: swimDuration.seconds,
+    swimTrack: triathlonData?.disciplines.swimming.track,
+    transition1Hours: transition1.hours,
+    transition1Minutes: transition1.minutes,
+    transition1Seconds: transition1.seconds,
+    bikeDistanceValue:
+      (triathlonData?.disciplines.cycling.distanceMeters ?? 0) / 1000,
+    bikeDistanceUnit: 'km',
+    bikeElevationGainMeters:
+      triathlonData?.disciplines.cycling.elevationGainMeters ?? 0,
+    bikeDurationHours: bikeDuration.hours,
+    bikeDurationMinutes: bikeDuration.minutes,
+    bikeDurationSeconds: bikeDuration.seconds,
+    bikeTrack: triathlonData?.disciplines.cycling.track,
+    transition2Hours: transition2.hours,
+    transition2Minutes: transition2.minutes,
+    transition2Seconds: transition2.seconds,
+    runDistanceValue:
+      (triathlonData?.disciplines.running.distanceMeters ?? 0) / 1000,
+    runDistanceUnit: 'km',
+    runElevationGainMeters:
+      triathlonData?.disciplines.running.elevationGainMeters ?? 0,
+    runDurationHours: runDuration.hours,
+    runDurationMinutes: runDuration.minutes,
+    runDurationSeconds: runDuration.seconds,
+    runTrack: triathlonData?.disciplines.running.track,
     resultStatus: performance?.data.resultStatus ?? 'ranked',
     statusComment: performance?.data.statusComment ?? '',
     sexRank: rankedValue(performance?.data.rankings.sex),
-    sexParticipants: performance?.data.rankings.sex.participantCount,
+    sexParticipants: performance?.data.rankings.sex?.participantCount,
     includeOverallRanking:
-      typeof performance?.data.rankings.overall.rank === 'number' &&
-      Number(performance.data.rankings.overall.rank) > 0,
+      typeof performance?.data.rankings.overall?.rank === 'number' &&
+      Number(performance.data.rankings.overall?.rank) > 0,
     overallRank: rankedValue(performance?.data.rankings.overall),
-    overallParticipants: performance?.data.rankings.overall.participantCount,
+    overallParticipants:
+      performance?.data.rankings.overall?.participantCount,
     includeCategoryRanking:
-      typeof performance?.data.rankings.category.rank === 'number' &&
-      Number(performance.data.rankings.category.rank) > 0,
+      typeof performance?.data.rankings.category?.rank === 'number' &&
+      Number(performance.data.rankings.category?.rank) > 0,
     categoryRank: rankedValue(performance?.data.rankings.category),
-    categoryParticipants: performance?.data.rankings.category.participantCount,
+    categoryParticipants:
+      performance?.data.rankings.category?.participantCount,
     track: performance?.track,
     notes: performance?.notes ?? '',
   }
@@ -774,13 +1268,19 @@ function buildPerformance(
 ): Performance {
   const now = new Date().toISOString()
   const notes = clean(values.notes)
-  const statusComment = clean(values.statusComment)
-  const distanceMeters = Math.round(
-    values.distanceUnit === 'km'
-      ? values.distanceValue * 1000
-      : values.distanceValue,
-  )
-  const rankings = buildRankings(values)
+  const isTriathlonDefinition = definition.sportKey === 'triathlon'
+  const data = isTriathlonDefinition
+    ? buildTriathlonData(values)
+    : buildRaceData(values, definition)
+  const searchableNumbers = isTriathlonDefinition
+    ? [
+        values.swimDistanceValue,
+        values.bikeDistanceValue,
+        values.bikeElevationGainMeters,
+        values.runDistanceValue,
+        values.runElevationGainMeters,
+      ]
+    : [values.distanceValue, values.elevationGainMeters]
 
   return {
     id: existing?.id ?? crypto.randomUUID(),
@@ -797,22 +1297,10 @@ function buildPerformance(
       month: values.month,
       day: values.day,
     },
-    data: {
-      distanceMeters,
-      ...(definitionHasField(definition, 'elevationGainMeters')
-        ? { elevationGainMeters: values.elevationGainMeters }
-        : {}),
-      durationSeconds:
-        values.durationHours * 3600 +
-        values.durationMinutes * 60 +
-        values.durationSeconds,
-      resultStatus: values.resultStatus,
-      rankings,
-      ...(values.resultStatus !== 'ranked' && statusComment
-        ? { statusComment }
-        : {}),
-    },
-    ...(values.track ? { track: values.track } : {}),
+    data,
+    ...(!isTriathlonDefinition && values.track
+      ? { track: values.track }
+      : {}),
     ...(notes ? { notes } : {}),
     tags: [definition.categoryKey, definition.sportKey, 'race'],
     searchKeywords: [
@@ -820,8 +1308,7 @@ function buildPerformance(
       definition.categoryLabel,
       definition.sportLabel,
       String(values.year),
-      String(distanceMeters),
-      String(values.elevationGainMeters ?? ''),
+      ...searchableNumbers.map((value) => String(value ?? '')),
     ]
       .join(' ')
       .toLowerCase()
@@ -832,26 +1319,245 @@ function buildPerformance(
   }
 }
 
-function buildRankings(
+function buildRaceData(
   values: PerformanceWizardValues,
-): Record<'sex' | 'overall' | 'category', RankingResult> {
-  if (values.resultStatus !== 'ranked') {
-    const rank = resultSentinels[values.resultStatus]
-    return {
-      sex: { rank },
-      overall: { rank },
-      category: { rank },
-    }
-  }
+  definition: ActivityDefinition,
+): RaceData {
+  const distanceMeters = toDistanceMeters(
+    values.distanceValue,
+    values.distanceUnit,
+  )
+  const elevationGainMeters = positiveValue(values.elevationGainMeters)
+  const durationSeconds =
+    values.resultStatus === 'ranked'
+      ? durationFromParts(
+          values.durationHours,
+          values.durationMinutes,
+          values.durationSeconds,
+        )
+      : undefined
+  const statusComment = clean(values.statusComment)
 
   return {
-    sex: buildRanking(values.sexRank, values.sexParticipants),
-    overall: values.includeOverallRanking
-      ? buildRanking(values.overallRank, values.overallParticipants)
-      : {},
-    category: values.includeCategoryRanking
-      ? buildRanking(values.categoryRank, values.categoryParticipants)
-      : {},
+    ...(distanceMeters ? { distanceMeters } : {}),
+    ...(definitionHasField(definition, 'elevationGainMeters') &&
+    elevationGainMeters
+      ? { elevationGainMeters }
+      : {}),
+    ...(durationSeconds ? { durationSeconds } : {}),
+    resultStatus: values.resultStatus,
+    rankings: buildRankings(values),
+    ...(values.resultStatus !== 'ranked' && statusComment
+      ? { statusComment }
+      : {}),
+  }
+}
+
+function buildTriathlonData(
+  values: PerformanceWizardValues,
+): TriathlonData {
+  const keepsTime = values.resultStatus === 'ranked'
+  const swimming = buildTriathlonDiscipline({
+    distanceValue: values.swimDistanceValue,
+    distanceUnit: values.swimDistanceUnit,
+    durationSeconds: keepsTime
+      ? durationFromParts(
+          values.swimDurationHours,
+          values.swimDurationMinutes,
+          values.swimDurationSeconds,
+        )
+      : undefined,
+    track: values.swimTrack,
+  })
+  const cycling = buildTriathlonDiscipline({
+    distanceValue: values.bikeDistanceValue,
+    distanceUnit: values.bikeDistanceUnit,
+    elevationGainMeters: values.bikeElevationGainMeters,
+    durationSeconds: keepsTime
+      ? durationFromParts(
+          values.bikeDurationHours,
+          values.bikeDurationMinutes,
+          values.bikeDurationSeconds,
+        )
+      : undefined,
+    track: values.bikeTrack,
+  })
+  const running = buildTriathlonDiscipline({
+    distanceValue: values.runDistanceValue,
+    distanceUnit: values.runDistanceUnit,
+    elevationGainMeters: values.runElevationGainMeters,
+    durationSeconds: keepsTime
+      ? durationFromParts(
+          values.runDurationHours,
+          values.runDurationMinutes,
+          values.runDurationSeconds,
+        )
+      : undefined,
+    track: values.runTrack,
+  })
+  const t1DurationSeconds = keepsTime
+    ? durationFromParts(
+        values.transition1Hours,
+        values.transition1Minutes,
+        values.transition1Seconds,
+      )
+    : undefined
+  const t2DurationSeconds = keepsTime
+    ? durationFromParts(
+        values.transition2Hours,
+        values.transition2Minutes,
+        values.transition2Seconds,
+      )
+    : undefined
+  const totalDurationSeconds = [
+    swimming.durationSeconds,
+    t1DurationSeconds,
+    cycling.durationSeconds,
+    t2DurationSeconds,
+    running.durationSeconds,
+  ].reduce<number>((total, duration) => total + (duration ?? 0), 0)
+  const statusComment = clean(values.statusComment)
+
+  return {
+    disciplines: {
+      swimming,
+      cycling,
+      running,
+    },
+    transitions: {
+      ...(t1DurationSeconds ? { t1DurationSeconds } : {}),
+      ...(t2DurationSeconds ? { t2DurationSeconds } : {}),
+    },
+    ...(totalDurationSeconds > 0 ? { totalDurationSeconds } : {}),
+    resultStatus: values.resultStatus,
+    rankings: buildRankings(values),
+    ...(values.resultStatus !== 'ranked' && statusComment
+      ? { statusComment }
+      : {}),
+  }
+}
+
+function buildTriathlonDiscipline({
+  distanceValue,
+  distanceUnit,
+  elevationGainMeters,
+  durationSeconds,
+  track,
+}: {
+  distanceValue?: number
+  distanceUnit: 'km' | 'm'
+  elevationGainMeters?: number
+  durationSeconds?: number
+  track?: SimplifiedGpxTrack
+}) {
+  const distanceMeters = toDistanceMeters(distanceValue, distanceUnit)
+  const elevation = positiveValue(elevationGainMeters)
+
+  return {
+    ...(distanceMeters ? { distanceMeters } : {}),
+    ...(elevation ? { elevationGainMeters: elevation } : {}),
+    ...(durationSeconds ? { durationSeconds } : {}),
+    ...(track ? { track } : {}),
+  }
+}
+
+function calculateTriathlonTotal(values: PerformanceWizardValues) {
+  return [
+    durationFromParts(
+      values.swimDurationHours,
+      values.swimDurationMinutes,
+      values.swimDurationSeconds,
+    ),
+    durationFromParts(
+      values.transition1Hours,
+      values.transition1Minutes,
+      values.transition1Seconds,
+    ),
+    durationFromParts(
+      values.bikeDurationHours,
+      values.bikeDurationMinutes,
+      values.bikeDurationSeconds,
+    ),
+    durationFromParts(
+      values.transition2Hours,
+      values.transition2Minutes,
+      values.transition2Seconds,
+    ),
+    durationFromParts(
+      values.runDurationHours,
+      values.runDurationMinutes,
+      values.runDurationSeconds,
+    ),
+  ].reduce<number>((total, duration) => total + (duration ?? 0), 0)
+}
+
+function durationFromParts(
+  hours?: number,
+  minutes?: number,
+  seconds?: number,
+) {
+  const duration =
+    (hours ?? 0) * 3600 + (minutes ?? 0) * 60 + (seconds ?? 0)
+  return duration > 0 ? duration : undefined
+}
+
+function toDurationParts(durationSeconds?: number) {
+  return {
+    hours:
+      typeof durationSeconds === 'number'
+        ? Math.floor(durationSeconds / 3600)
+        : 0,
+    minutes:
+      typeof durationSeconds === 'number'
+        ? Math.floor((durationSeconds % 3600) / 60)
+        : 0,
+    seconds:
+      typeof durationSeconds === 'number' ? durationSeconds % 60 : 0,
+  }
+}
+
+function toDistanceMeters(value: number | undefined, unit: 'km' | 'm') {
+  if (typeof value !== 'number' || value <= 0) {
+    return undefined
+  }
+
+  return Math.round(unit === 'km' ? value * 1000 : value)
+}
+
+function positiveValue(value?: number) {
+  return typeof value === 'number' && value > 0 ? value : undefined
+}
+
+function formatDurationInput(durationSeconds: number) {
+  const { hours, minutes, seconds } = toDurationParts(durationSeconds)
+  return `${hours} H : ${String(minutes).padStart(2, '0')} M : ${String(seconds).padStart(2, '0')} S`
+}
+
+function buildRankings(
+  values: PerformanceWizardValues,
+): Partial<Record<'sex' | 'overall' | 'category', RankingResult>> {
+  if (values.resultStatus !== 'ranked') {
+    return {}
+  }
+
+  const sex = buildRanking(values.sexRank, values.sexParticipants)
+  const overall = buildRanking(
+    values.overallRank,
+    values.overallParticipants,
+  )
+  const category = buildRanking(
+    values.categoryRank,
+    values.categoryParticipants,
+  )
+
+  return {
+    ...(hasRankingValues(sex) ? { sex } : {}),
+    ...(values.includeOverallRanking && hasRankingValues(overall)
+      ? { overall }
+      : {}),
+    ...(values.includeCategoryRanking && hasRankingValues(category)
+      ? { category }
+      : {}),
   }
 }
 
@@ -869,8 +1575,11 @@ function rankedValue(ranking?: RankingResult) {
   return ranking?.rank && ranking.rank > 0 ? ranking.rank : undefined
 }
 
-function requiredNumber(value: unknown) {
-  return value === '' ? Number.NaN : Number(value)
+function hasRankingValues(ranking: RankingResult) {
+  return (
+    typeof ranking.rank === 'number' ||
+    typeof ranking.participantCount === 'number'
+  )
 }
 
 function optionalNumber(value: unknown) {

@@ -1,4 +1,5 @@
 import {
+  Activity,
   Bike,
   Footprints,
   Mountain,
@@ -15,6 +16,7 @@ import type {
   SportCategoryDefinition,
   SportDefinition,
   SportKey,
+  TriathlonData,
 } from '../../types/performance'
 
 export type SportOption = SportDefinition & {
@@ -45,6 +47,12 @@ export const sportCategories: SportCategoryDefinition[] = [
     label: "Sports d'hiver",
     accent: '#3b82a0',
     softAccent: '#e7f4f8',
+  },
+  {
+    key: 'multisport',
+    label: 'Multisport',
+    accent: '#8a4b61',
+    softAccent: '#f6e9ee',
   },
 ]
 
@@ -109,6 +117,12 @@ export const sportOptions: SportOption[] = [
     label: 'Ski de fond classique',
     icon: Snowflake,
   },
+  {
+    key: 'triathlon',
+    categoryKey: 'multisport',
+    label: 'Triathlon',
+    icon: Activity,
+  },
 ]
 
 export const categoryByKey = Object.fromEntries(
@@ -125,7 +139,7 @@ const commonResultFields: ActivityFieldDefinition[] = [
     label: 'Temps',
     section: 'results',
     valueType: 'duration',
-    required: true,
+    required: false,
     storageUnit: 's',
     displayFormat: 'hms',
   },
@@ -179,7 +193,7 @@ function buildFields(includeElevation: boolean): ActivityFieldDefinition[] {
           label: 'Denivele positif',
           section: 'description',
           valueType: 'integer',
-          required: true,
+          required: false,
           storageUnit: 'm',
           displayFormat: 'meters',
         },
@@ -192,7 +206,7 @@ function buildFields(includeElevation: boolean): ActivityFieldDefinition[] {
       label: 'Distance',
       section: 'description',
       valueType: 'distance',
-      required: true,
+      required: false,
       storageUnit: 'm',
       inputUnits: ['km', 'm'],
       defaultInputUnit: 'km',
@@ -203,8 +217,9 @@ function buildFields(includeElevation: boolean): ActivityFieldDefinition[] {
   ]
 }
 
-export const activityDefinitions: ActivityDefinition[] = sportOptions.map(
-  (sport) => {
+const singleSportDefinitions: ActivityDefinition[] = sportOptions
+  .filter((sport) => sport.key !== 'triathlon')
+  .map((sport) => {
     const category = categoryByKey[sport.categoryKey]
     return {
       id: `${sport.key}__race`,
@@ -220,8 +235,160 @@ export const activityDefinitions: ActivityDefinition[] = sportOptions.map(
       schemaVersion: 1,
       fields: buildFields(sport.key !== 'open-water-swimming'),
     }
-  },
-)
+  })
+
+const triathlonCategory = categoryByKey.multisport
+
+const triathlonDefinition: ActivityDefinition = {
+  id: 'triathlon__race',
+  categoryKey: 'multisport',
+  categoryLabel: triathlonCategory.label,
+  categoryAccent: triathlonCategory.accent,
+  sportKey: 'triathlon',
+  sportLabel: 'Triathlon',
+  activityTypeKey: 'race',
+  activityTypeLabel: 'Course',
+  environment: 'outdoor',
+  active: true,
+  schemaVersion: 1,
+  fields: [
+    triathlonField(
+      'swimDistanceMeters',
+      'Distance natation',
+      'distance',
+      'disciplines.swimming.distanceMeters',
+      'adaptive-distance',
+    ),
+    triathlonField(
+      'swimDurationSeconds',
+      'Temps natation',
+      'duration',
+      'disciplines.swimming.durationSeconds',
+      'hms',
+    ),
+    triathlonField(
+      'swimTrack',
+      'Trace GPX natation',
+      'gpx',
+      'disciplines.swimming.track',
+      'map',
+    ),
+    triathlonField(
+      'transition1Seconds',
+      'Transition T1',
+      'duration',
+      'transitions.t1DurationSeconds',
+      'hms',
+    ),
+    triathlonField(
+      'bikeDistanceMeters',
+      'Distance cyclisme',
+      'distance',
+      'disciplines.cycling.distanceMeters',
+      'adaptive-distance',
+    ),
+    triathlonField(
+      'bikeElevationGainMeters',
+      'Denivele cyclisme',
+      'integer',
+      'disciplines.cycling.elevationGainMeters',
+      'meters',
+    ),
+    triathlonField(
+      'bikeDurationSeconds',
+      'Temps cyclisme',
+      'duration',
+      'disciplines.cycling.durationSeconds',
+      'hms',
+    ),
+    triathlonField(
+      'bikeTrack',
+      'Trace GPX cyclisme',
+      'gpx',
+      'disciplines.cycling.track',
+      'map',
+    ),
+    triathlonField(
+      'transition2Seconds',
+      'Transition T2',
+      'duration',
+      'transitions.t2DurationSeconds',
+      'hms',
+    ),
+    triathlonField(
+      'runDistanceMeters',
+      'Distance course a pied',
+      'distance',
+      'disciplines.running.distanceMeters',
+      'adaptive-distance',
+    ),
+    triathlonField(
+      'runElevationGainMeters',
+      'Denivele course a pied',
+      'integer',
+      'disciplines.running.elevationGainMeters',
+      'meters',
+    ),
+    triathlonField(
+      'runDurationSeconds',
+      'Temps course a pied',
+      'duration',
+      'disciplines.running.durationSeconds',
+      'hms',
+    ),
+    triathlonField(
+      'runTrack',
+      'Trace GPX course a pied',
+      'gpx',
+      'disciplines.running.track',
+      'map',
+    ),
+    triathlonField(
+      'totalDurationSeconds',
+      'Temps total',
+      'duration',
+      'totalDurationSeconds',
+      'hms',
+    ),
+    ...commonResultFields
+      .filter((field) => field.key !== 'track')
+      .map((field) => ({ ...field })),
+  ],
+}
+
+export const activityDefinitions: ActivityDefinition[] = [
+  ...singleSportDefinitions,
+  triathlonDefinition,
+]
+
+function triathlonField(
+  key: ActivityFieldDefinition['key'],
+  label: string,
+  valueType: ActivityFieldDefinition['valueType'],
+  storagePath: string,
+  displayFormat: NonNullable<ActivityFieldDefinition['displayFormat']>,
+): ActivityFieldDefinition {
+  return {
+    key,
+    label,
+    section: valueType === 'gpx' ? 'route' : 'description',
+    valueType,
+    required: false,
+    storagePath,
+    ...(valueType === 'distance'
+      ? {
+          storageUnit: 'm' as const,
+          inputUnits: ['km', 'm'] as Array<'km' | 'm'>,
+          defaultInputUnit: 'km' as const,
+        }
+      : valueType === 'duration'
+        ? { storageUnit: 's' as const }
+        : valueType === 'integer'
+          ? { storageUnit: 'm' as const }
+          : {}),
+    displayFormat,
+  }
+}
 
 export const definitionById = Object.fromEntries(
   activityDefinitions.map((definition) => [definition.id, definition]),
@@ -260,17 +427,138 @@ export function isRaceData(
     typeof data.elevationGainMeters === 'number' &&
     Number.isInteger(data.elevationGainMeters) &&
     data.elevationGainMeters >= 0
+  const hasDistance =
+    typeof data.distanceMeters === 'undefined' ||
+    (Number.isInteger(data.distanceMeters) &&
+      Number(data.distanceMeters) > 0)
+  const hasDuration =
+    typeof data.durationSeconds === 'undefined' ||
+    (Number.isInteger(data.durationSeconds) &&
+      Number(data.durationSeconds) > 0)
 
   return (
-    Number.isInteger(data.distanceMeters) &&
-    Number(data.distanceMeters) > 0 &&
+    hasDistance &&
     (includeElevation
-      ? hasElevation
+      ? typeof data.elevationGainMeters === 'undefined' || hasElevation
       : typeof data.elevationGainMeters === 'undefined') &&
-    Number.isInteger(data.durationSeconds) &&
-    Number(data.durationSeconds) > 0 &&
+    hasDuration &&
+    (data.resultStatus === 'ranked' ||
+      typeof data.durationSeconds === 'undefined') &&
     isResultStatus(data.resultStatus) &&
     hasValidRankings(data)
+  )
+}
+
+export function isTriathlonData(value: unknown): value is TriathlonData {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const data = value as Partial<TriathlonData>
+  if (
+    !data.disciplines ||
+    !data.transitions ||
+    !isResultStatus(data.resultStatus) ||
+    !hasValidRankings(data)
+  ) {
+    return false
+  }
+
+  const swimming = data.disciplines.swimming
+  const cycling = data.disciplines.cycling
+  const running = data.disciplines.running
+  if (
+    !isTriathlonDiscipline(swimming, false) ||
+    !isTriathlonDiscipline(cycling, true) ||
+    !isTriathlonDiscipline(running, true)
+  ) {
+    return false
+  }
+
+  const t1 = data.transitions.t1DurationSeconds
+  const t2 = data.transitions.t2DurationSeconds
+  if (!isOptionalPositiveInteger(t1) || !isOptionalPositiveInteger(t2)) {
+    return false
+  }
+
+  const durations = [
+    swimming.durationSeconds,
+    t1,
+    cycling.durationSeconds,
+    t2,
+    running.durationSeconds,
+  ]
+  const calculatedTotal = durations.reduce<number>(
+    (total, duration) => total + (duration ?? 0),
+    0,
+  )
+  const storedTotal = data.totalDurationSeconds
+  const totalIsValid =
+    calculatedTotal > 0
+      ? storedTotal === calculatedTotal
+      : typeof storedTotal === 'undefined'
+
+  return (
+    totalIsValid &&
+    (data.resultStatus === 'ranked' ||
+      (durations.every((duration) => typeof duration === 'undefined') &&
+        typeof storedTotal === 'undefined'))
+  )
+}
+
+function isTriathlonDiscipline(
+  value: unknown,
+  allowsElevation: boolean,
+) {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const discipline = value as {
+    distanceMeters?: unknown
+    elevationGainMeters?: unknown
+    durationSeconds?: unknown
+    track?: unknown
+  }
+
+  return (
+    isOptionalPositiveInteger(discipline.distanceMeters) &&
+    isOptionalPositiveInteger(discipline.durationSeconds) &&
+    (allowsElevation
+      ? typeof discipline.elevationGainMeters === 'undefined' ||
+        (Number.isInteger(discipline.elevationGainMeters) &&
+          Number(discipline.elevationGainMeters) >= 0)
+      : typeof discipline.elevationGainMeters === 'undefined') &&
+    (typeof discipline.track === 'undefined' ||
+      isValidSimplifiedTrack(discipline.track))
+  )
+}
+
+function isOptionalPositiveInteger(value: unknown) {
+  return (
+    typeof value === 'undefined' ||
+    (Number.isInteger(value) && Number(value) > 0)
+  )
+}
+
+function isValidSimplifiedTrack(value: unknown) {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const track = value as {
+    fileName?: unknown
+    originalPointCount?: unknown
+    points?: unknown
+  }
+  return (
+    typeof track.fileName === 'string' &&
+    track.fileName.length > 0 &&
+    track.fileName.length <= 200 &&
+    Number.isInteger(track.originalPointCount) &&
+    Array.isArray(track.points) &&
+    track.points.length >= 2 &&
+    track.points.length <= 500
   )
 }
 

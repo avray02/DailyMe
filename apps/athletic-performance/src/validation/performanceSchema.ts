@@ -14,6 +14,9 @@ const optionalNumber = (
     .max(maximum, message)
     .optional()
 
+const optionalDecimal = (maximum: number, message: string) =>
+  z.number({ error: message }).min(0, message).max(maximum, message).optional()
+
 export const performanceSchema = z
   .object({
     categoryKey: z.enum([
@@ -21,6 +24,7 @@ export const performanceSchema = z
       'cycling',
       'swimming',
       'winter-sports',
+      'multisport',
     ]),
     sportKey: z.enum([
       'road-running',
@@ -33,6 +37,7 @@ export const performanceSchema = z
       'ski-mountaineering',
       'cross-country-skiing-skating',
       'cross-country-skiing-classic',
+      'triathlon',
     ]),
     activityDefinitionId: z.string().min(1),
     title: z
@@ -43,31 +48,50 @@ export const performanceSchema = z
     year: z.number().int().min(1900).max(2100),
     month: z.number().int().min(1).max(12),
     day: z.number().int().min(1).max(31),
-    distanceValue: z
-      .number({ error: 'Distance obligatoire' })
-      .positive('La distance doit etre superieure a 0')
-      .max(1_000_000, 'Distance invalide'),
+    distanceValue: optionalDecimal(1_000_000, 'Distance invalide'),
     distanceUnit: z.enum(['km', 'm']),
     elevationGainMeters: optionalNumber(
       0,
       100_000,
       'Denivele invalide',
     ),
-    durationHours: z
-      .number({ error: 'Heures invalides' })
-      .int('Heures invalides')
-      .min(0)
-      .max(100_000),
-    durationMinutes: z
-      .number({ error: 'Minutes invalides' })
-      .int('Minutes invalides')
-      .min(0)
-      .max(59, 'Entre 0 et 59 minutes'),
-    durationSeconds: z
-      .number({ error: 'Secondes invalides' })
-      .int('Secondes invalides')
-      .min(0)
-      .max(59, 'Entre 0 et 59 secondes'),
+    durationHours: optionalNumber(0, 100_000, 'Heures invalides'),
+    durationMinutes: optionalNumber(0, 59, 'Entre 0 et 59 minutes'),
+    durationSeconds: optionalNumber(0, 59, 'Entre 0 et 59 secondes'),
+    swimDistanceValue: optionalDecimal(1_000_000, 'Distance invalide'),
+    swimDistanceUnit: z.enum(['km', 'm']),
+    swimDurationHours: optionalNumber(0, 100_000, 'Heures invalides'),
+    swimDurationMinutes: optionalNumber(0, 59, 'Entre 0 et 59 minutes'),
+    swimDurationSeconds: optionalNumber(0, 59, 'Entre 0 et 59 secondes'),
+    swimTrack: z.custom<SimplifiedGpxTrack>().optional(),
+    transition1Hours: optionalNumber(0, 100_000, 'Heures invalides'),
+    transition1Minutes: optionalNumber(0, 59, 'Entre 0 et 59 minutes'),
+    transition1Seconds: optionalNumber(0, 59, 'Entre 0 et 59 secondes'),
+    bikeDistanceValue: optionalDecimal(1_000_000, 'Distance invalide'),
+    bikeDistanceUnit: z.enum(['km', 'm']),
+    bikeElevationGainMeters: optionalNumber(
+      0,
+      100_000,
+      'Denivele invalide',
+    ),
+    bikeDurationHours: optionalNumber(0, 100_000, 'Heures invalides'),
+    bikeDurationMinutes: optionalNumber(0, 59, 'Entre 0 et 59 minutes'),
+    bikeDurationSeconds: optionalNumber(0, 59, 'Entre 0 et 59 secondes'),
+    bikeTrack: z.custom<SimplifiedGpxTrack>().optional(),
+    transition2Hours: optionalNumber(0, 100_000, 'Heures invalides'),
+    transition2Minutes: optionalNumber(0, 59, 'Entre 0 et 59 minutes'),
+    transition2Seconds: optionalNumber(0, 59, 'Entre 0 et 59 secondes'),
+    runDistanceValue: optionalDecimal(1_000_000, 'Distance invalide'),
+    runDistanceUnit: z.enum(['km', 'm']),
+    runElevationGainMeters: optionalNumber(
+      0,
+      100_000,
+      'Denivele invalide',
+    ),
+    runDurationHours: optionalNumber(0, 100_000, 'Heures invalides'),
+    runDurationMinutes: optionalNumber(0, 59, 'Entre 0 et 59 minutes'),
+    runDurationSeconds: optionalNumber(0, 59, 'Entre 0 et 59 secondes'),
+    runTrack: z.custom<SimplifiedGpxTrack>().optional(),
     resultStatus: z.enum(['ranked', 'dnf', 'dsq', 'dns']),
     statusComment: z.string().max(1000).optional(),
     sexRank: optionalNumber(1, 10_000_000, 'Classement invalide'),
@@ -119,30 +143,6 @@ export const performanceSchema = z
         code: 'custom',
         message: 'Date invalide',
         path: ['day'],
-      })
-    }
-
-    const needsElevation = definition.fields.some(
-      (field) => field.key === 'elevationGainMeters' && field.required,
-    )
-    if (needsElevation && typeof values.elevationGainMeters !== 'number') {
-      context.addIssue({
-        code: 'custom',
-        message: 'Denivele obligatoire',
-        path: ['elevationGainMeters'],
-      })
-    }
-
-    if (
-      values.durationHours * 3600 +
-        values.durationMinutes * 60 +
-        values.durationSeconds ===
-      0
-    ) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Le temps doit etre superieur a 0',
-        path: ['durationSeconds'],
       })
     }
 
