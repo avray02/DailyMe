@@ -3,17 +3,40 @@ import { collection, doc, getDocs, setDoc } from 'firebase/firestore'
 import type { ActivityDefinition } from '../../types/performance'
 import { activityDefinitions } from './performanceCatalog'
 
+const appDocumentPath = ['apps', 'athletic-performance'] as const
+
 export async function listActivityDefinitions(canManage: boolean) {
   if (firebaseMode !== 'firebase' || !db) {
     return activityDefinitions
   }
 
-  const firestore = db
+  const definitionsCollection = collection(
+    db,
+    ...appDocumentPath,
+    'activityDefinitions',
+  )
 
   try {
-    const snapshot = await getDocs(
-      collection(firestore, 'activityDefinitions'),
-    )
+    if (canManage) {
+      await setDoc(
+        doc(db, ...appDocumentPath),
+        {
+          id: 'athletic-performance',
+          label: 'Athletic Performance',
+          schemaVersion: 1,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true },
+      )
+      await Promise.all(
+        activityDefinitions.map((definition) =>
+          setDoc(doc(definitionsCollection, definition.id), definition),
+        ),
+      )
+      return activityDefinitions
+    }
+
+    const snapshot = await getDocs(definitionsCollection)
     const definitions = snapshot.docs
       .map((definitionDocument) => {
         const supportedDefinition = activityDefinitions.find(
@@ -24,7 +47,6 @@ export async function listActivityDefinitions(canManage: boolean) {
           ? ({
               ...supportedDefinition,
               ...definitionDocument.data(),
-              environment: supportedDefinition.environment,
               id: definitionDocument.id,
             } as ActivityDefinition)
           : null
@@ -34,24 +56,9 @@ export async function listActivityDefinitions(canManage: boolean) {
           Boolean(definition?.active),
       )
 
-    if (canManage) {
-      await Promise.all(
-        activityDefinitions.map((definition) =>
-          setDoc(
-            doc(firestore, 'activityDefinitions', definition.id),
-            definition,
-          ),
-        ),
-      )
-      return activityDefinitions
-    }
-
-    if (definitions.length) {
-      return definitions
-    }
+    return definitions.length ? definitions : activityDefinitions
   } catch (error) {
     console.warn('Activity definitions could not be loaded from Firestore', error)
+    return activityDefinitions
   }
-
-  return activityDefinitions
 }

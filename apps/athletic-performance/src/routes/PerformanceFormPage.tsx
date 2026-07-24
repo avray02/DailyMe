@@ -3,10 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { PerformanceForm } from '../features/performance-form/PerformanceForm'
-import {
-  getPerformance,
-  getPerformanceStages,
-} from '../features/performances/performanceRepository'
+import { getPerformance } from '../features/performances/performanceRepository'
 
 export function PerformanceFormPage() {
   const { user } = useAuth()
@@ -17,21 +14,15 @@ export function PerformanceFormPage() {
     queryFn: () => getPerformance(ownerUid, performanceId ?? ''),
     enabled: Boolean(performanceId),
   })
-  const stagesQuery = useQuery({
-    queryKey: ['performance-stages', ownerUid, performanceId],
-    queryFn: () => getPerformanceStages(ownerUid, performanceId ?? ''),
-    enabled: Boolean(performanceId),
-  })
-
   if (!performanceId) {
     return <PerformanceForm />
   }
 
-  if (performanceQuery.isLoading || stagesQuery.isLoading) {
+  if (performanceQuery.isLoading) {
     return <p className="state-message">Chargement de la performance...</p>
   }
 
-  if (performanceQuery.isError || stagesQuery.isError) {
+  if (performanceQuery.isError) {
     return (
       <section className="state-message">
         <h1>Chargement impossible</h1>
@@ -57,10 +48,5 @@ export function PerformanceFormPage() {
     )
   }
 
-  return (
-    <PerformanceForm
-      performance={performanceQuery.data}
-      stages={stagesQuery.data ?? []}
-    />
-  )
+  return <PerformanceForm performance={performanceQuery.data} />
 }

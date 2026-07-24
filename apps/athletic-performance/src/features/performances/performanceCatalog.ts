@@ -1,243 +1,225 @@
 import {
   Bike,
-  Dumbbell,
   Footprints,
   Mountain,
   Snowflake,
-  Trophy,
   Waves,
   type LucideIcon,
 } from 'lucide-react'
 import type {
   ActivityDefinition,
-  ActivityTypeKey,
-  CompetitionResultData,
-  PerformanceStageData,
+  ActivityFieldDefinition,
+  MedalKind,
+  RaceData,
   ResultStatus,
-  RoadCyclingCompetitionData,
-  RunningCharityData,
-  RunningCompetitionData,
+  SportCategoryDefinition,
+  SportDefinition,
   SportKey,
 } from '../../types/performance'
 
-export type SportOption = {
-  key: SportKey
-  label: string
+export type SportOption = SportDefinition & {
   icon: LucideIcon
 }
 
-export const sportOptions: SportOption[] = [
-  { key: 'running', label: 'Course a pied', icon: Footprints },
-  { key: 'trail', label: 'Trail', icon: Mountain },
-  { key: 'triathlon', label: 'Triathlon', icon: Waves },
-  { key: 'cycling', label: 'Cyclisme', icon: Bike },
-  { key: 'road-cycling', label: 'Cyclisme sur route', icon: Bike },
-  { key: 'swimming', label: 'Natation', icon: Waves },
-  { key: 'strength', label: 'Musculation', icon: Dumbbell },
-  { key: 'hiking', label: 'Randonnee', icon: Mountain },
-  { key: 'skiing', label: 'Ski', icon: Snowflake },
-  { key: 'backcountry-skiing', label: 'Ski rando', icon: Snowflake },
-  { key: 'other', label: 'Autre', icon: Trophy },
+export const sportCategories: SportCategoryDefinition[] = [
+  {
+    key: 'running',
+    label: 'Course a pied',
+    accent: '#c83f4b',
+    softAccent: '#fbeaec',
+  },
+  {
+    key: 'cycling',
+    label: 'Cyclisme',
+    accent: '#18794e',
+    softAccent: '#e4f3eb',
+  },
+  {
+    key: 'swimming',
+    label: 'Natation',
+    accent: '#173b63',
+    softAccent: '#e7eef6',
+  },
+  {
+    key: 'winter-sports',
+    label: "Sports d'hiver",
+    accent: '#3b82a0',
+    softAccent: '#e7f4f8',
+  },
 ]
 
-export const activityOptions: Array<{
-  key: ActivityTypeKey
-  label: string
-}> = [
-  { key: 'competition', label: 'Competition' },
-  { key: 'adventure', label: 'Aventure' },
-  { key: 'charity', label: 'Caritatif' },
+export const sportOptions: SportOption[] = [
+  {
+    key: 'road-running',
+    categoryKey: 'running',
+    label: 'Course a pied',
+    icon: Footprints,
+  },
+  {
+    key: 'trail-running',
+    categoryKey: 'running',
+    label: 'Trail',
+    icon: Mountain,
+  },
+  {
+    key: 'road-cycling',
+    categoryKey: 'cycling',
+    label: 'Cyclisme sur route',
+    icon: Bike,
+  },
+  {
+    key: 'mountain-biking',
+    categoryKey: 'cycling',
+    label: 'VTT',
+    icon: Mountain,
+  },
+  {
+    key: 'gravel-cycling',
+    categoryKey: 'cycling',
+    label: 'Gravel',
+    icon: Bike,
+  },
+  {
+    key: 'open-water-swimming',
+    categoryKey: 'swimming',
+    label: 'Natation en eau libre',
+    icon: Waves,
+  },
+  {
+    key: 'ski-mountaineering',
+    categoryKey: 'winter-sports',
+    label: 'Ski de randonnee',
+    icon: Mountain,
+  },
+  {
+    key: 'cross-country-skiing-skating',
+    categoryKey: 'winter-sports',
+    label: 'Ski de fond skating',
+    icon: Snowflake,
+  },
+  {
+    key: 'cross-country-skiing-classic',
+    categoryKey: 'winter-sports',
+    label: 'Ski de fond classique',
+    icon: Snowflake,
+  },
 ]
+
+export const categoryByKey = Object.fromEntries(
+  sportCategories.map((category) => [category.key, category]),
+) as Record<SportCategoryDefinition['key'], SportCategoryDefinition>
 
 export const sportByKey = Object.fromEntries(
   sportOptions.map((sport) => [sport.key, sport]),
 ) as Record<SportKey, SportOption>
 
-export const activityLabels: Record<ActivityTypeKey, string> = {
-  competition: 'Competition',
-  adventure: 'Aventure',
-  charity: 'Caritatif',
-}
-
-export const activityDefinitions: ActivityDefinition[] = [
+const commonResultFields: ActivityFieldDefinition[] = [
   {
-    id: 'running__competition',
-    sportKey: 'running',
-    sportLabel: 'Course a pied',
-    activityTypeKey: 'competition',
-    activityTypeLabel: 'Competition',
-    environment: 'outdoor',
-    active: true,
-    schemaVersion: 2,
-    fields: [
-      {
-        key: 'distanceMeters',
-        label: 'Distance',
-        section: 'description',
-        valueType: 'distance',
-        required: true,
-        storageUnit: 'm',
-        inputUnits: ['km', 'm'],
-        displayFormat: 'adaptive-distance',
-      },
-      {
-        key: 'elevationGainMeters',
-        label: 'Denivele positif',
-        section: 'description',
-        valueType: 'integer',
-        required: true,
-        storageUnit: 'm',
-        displayFormat: 'meters',
-      },
-      {
-        key: 'durationSeconds',
-        label: 'Temps',
-        section: 'results',
-        valueType: 'duration',
-        required: true,
-        storageUnit: 's',
-        displayFormat: 'hms',
-      },
-      {
-        key: 'resultStatus',
-        label: 'Statut du resultat',
-        section: 'results',
-        valueType: 'status',
-        required: true,
-        displayFormat: 'status',
-      },
-      {
-        key: 'rankings',
-        label: 'Classements',
-        section: 'results',
-        valueType: 'rankings',
-        required: false,
-        displayFormat: 'rankings',
-      },
-      {
-        key: 'statusComment',
-        label: 'Commentaire de statut',
-        section: 'results',
-        valueType: 'text',
-        required: false,
-      },
-    ],
+    key: 'durationSeconds',
+    label: 'Temps',
+    section: 'results',
+    valueType: 'duration',
+    required: true,
+    storageUnit: 's',
+    displayFormat: 'hms',
   },
   {
-    id: 'running__charity',
-    sportKey: 'running',
-    sportLabel: 'Course a pied',
-    activityTypeKey: 'charity',
-    activityTypeLabel: 'Caritatif',
-    environment: 'outdoor',
-    active: true,
-    schemaVersion: 1,
-    fields: [
-      {
-        key: 'distanceMeters',
-        label: 'Distance',
-        section: 'description',
-        valueType: 'distance',
-        required: true,
-        storageUnit: 'm',
-        inputUnits: ['km', 'm'],
-        displayFormat: 'adaptive-distance',
-      },
-      {
-        key: 'elevationGainMeters',
-        label: 'Denivele positif',
-        section: 'description',
-        valueType: 'integer',
-        required: true,
-        storageUnit: 'm',
-        displayFormat: 'meters',
-      },
-      {
-        key: 'durationSeconds',
-        label: 'Temps',
-        section: 'results',
-        valueType: 'duration',
-        required: false,
-        storageUnit: 's',
-        displayFormat: 'hms',
-      },
-    ],
+    key: 'resultStatus',
+    label: 'Statut du resultat',
+    section: 'results',
+    valueType: 'status',
+    required: true,
+    displayFormat: 'status',
   },
   {
-    id: 'road-cycling__competition',
-    sportKey: 'road-cycling',
-    sportLabel: 'Cyclisme sur route',
-    activityTypeKey: 'competition',
-    activityTypeLabel: 'Competition',
-    environment: 'outdoor',
-    active: true,
-    schemaVersion: 1,
-    fields: [
-      {
-        key: 'distanceMeters',
-        label: 'Distance',
-        section: 'description',
-        valueType: 'distance',
-        required: true,
-        storageUnit: 'm',
-        inputUnits: ['km', 'm'],
-        displayFormat: 'adaptive-distance',
-      },
-      {
-        key: 'elevationGainMeters',
-        label: 'Denivele positif',
-        section: 'description',
-        valueType: 'integer',
-        required: true,
-        storageUnit: 'm',
-        displayFormat: 'meters',
-      },
-      {
-        key: 'durationSeconds',
-        label: 'Temps',
-        section: 'results',
-        valueType: 'duration',
-        required: true,
-        storageUnit: 's',
-        displayFormat: 'hms',
-      },
-      {
-        key: 'averagePowerWatts',
-        label: 'Puissance moyenne',
-        section: 'results',
-        valueType: 'integer',
-        required: false,
-      },
-      {
-        key: 'resultStatus',
-        label: 'Statut du resultat',
-        section: 'results',
-        valueType: 'status',
-        required: true,
-        displayFormat: 'status',
-      },
-      {
-        key: 'rankings',
-        label: 'Classements',
-        section: 'results',
-        valueType: 'rankings',
-        required: false,
-        displayFormat: 'rankings',
-      },
-      {
-        key: 'statusComment',
-        label: 'Commentaire de statut',
-        section: 'results',
-        valueType: 'text',
-        required: false,
-      },
-    ],
+    key: 'rankings',
+    label: 'Classements',
+    section: 'results',
+    valueType: 'rankings',
+    required: false,
+    displayFormat: 'rankings',
+  },
+  {
+    key: 'statusComment',
+    label: 'Commentaire de statut',
+    section: 'results',
+    valueType: 'text',
+    required: false,
+    displayFormat: 'text',
+  },
+  {
+    key: 'track',
+    label: 'Trace GPX',
+    section: 'route',
+    valueType: 'gpx',
+    required: false,
+    displayFormat: 'map',
+  },
+  {
+    key: 'notes',
+    label: 'Notes',
+    section: 'notes',
+    valueType: 'text',
+    required: false,
+    displayFormat: 'text',
   },
 ]
 
-export const runningCompetitionDefinition = activityDefinitions[0]
-export const runningCharityDefinition = activityDefinitions[1]
-export const roadCyclingCompetitionDefinition = activityDefinitions[2]
+function buildFields(includeElevation: boolean): ActivityFieldDefinition[] {
+  const elevationFields: ActivityFieldDefinition[] = includeElevation
+    ? [
+        {
+          key: 'elevationGainMeters',
+          label: 'Denivele positif',
+          section: 'description',
+          valueType: 'integer',
+          required: true,
+          storageUnit: 'm',
+          displayFormat: 'meters',
+        },
+      ]
+    : []
+
+  return [
+    {
+      key: 'distanceMeters',
+      label: 'Distance',
+      section: 'description',
+      valueType: 'distance',
+      required: true,
+      storageUnit: 'm',
+      inputUnits: ['km', 'm'],
+      defaultInputUnit: 'km',
+      displayFormat: 'adaptive-distance',
+    },
+    ...elevationFields,
+    ...commonResultFields.map((field) => ({ ...field })),
+  ]
+}
+
+export const activityDefinitions: ActivityDefinition[] = sportOptions.map(
+  (sport) => {
+    const category = categoryByKey[sport.categoryKey]
+    return {
+      id: `${sport.key}__race`,
+      categoryKey: sport.categoryKey,
+      categoryLabel: category.label,
+      categoryAccent: category.accent,
+      sportKey: sport.key,
+      sportLabel: sport.label,
+      activityTypeKey: 'race',
+      activityTypeLabel: 'Course',
+      environment: 'outdoor',
+      active: true,
+      schemaVersion: 1,
+      fields: buildFields(sport.key !== 'open-water-swimming'),
+    }
+  },
+)
+
+export const definitionById = Object.fromEntries(
+  activityDefinitions.map((definition) => [definition.id, definition]),
+) as Record<string, ActivityDefinition>
 
 export const resultSentinels: Record<Exclude<ResultStatus, 'ranked'>, number> = {
   dnf: -1,
@@ -252,172 +234,90 @@ export const resultStatusLabels: Record<ResultStatus, string> = {
   dns: 'DNS',
 }
 
-export function isRunningCompetitionData(
-  value: unknown,
-): value is RunningCompetitionData {
-  if (!value || typeof value !== 'object') {
-    return false
-  }
-
-  const data = value as Partial<RunningCompetitionData>
-  return (
-    hasValidDistanceElevation(data) &&
-    hasValidCompetitionResults(data) &&
-    !('stageCount' in data) &&
-    !('averagePowerWatts' in data)
-  )
-}
-
-export function isRoadCyclingCompetitionData(
-  value: unknown,
-): value is RoadCyclingCompetitionData {
-  if (!value || typeof value !== 'object') {
-    return false
-  }
-
-  const data = value as Partial<RoadCyclingCompetitionData>
-
-  return (
-    hasValidDistanceElevation(data) &&
-    hasValidCompetitionResults(data) &&
-    (data.eventFormat === 'single' || data.eventFormat === 'stage-race') &&
-    (
-      (data.eventFormat === 'single' &&
-        typeof data.stageCount === 'undefined') ||
-      (data.eventFormat === 'stage-race' &&
-        Number.isInteger(data.stageCount) &&
-        Number(data.stageCount) >= 2)
-    ) &&
-    (typeof data.averagePowerWatts === 'undefined' ||
-      (Number.isInteger(data.averagePowerWatts) &&
-        Number(data.averagePowerWatts) > 0))
-  )
-}
-
-export function isPerformanceStageData(
-  value: unknown,
-): value is PerformanceStageData {
-  if (!value || typeof value !== 'object') {
-    return false
-  }
-
-  const data = value as Partial<PerformanceStageData>
-
-  return (
-    hasValidDistanceElevation(data) &&
-    hasValidCompetitionResults(data) &&
-    (typeof data.averagePowerWatts === 'undefined' ||
-      (Number.isInteger(data.averagePowerWatts) &&
-        Number(data.averagePowerWatts) > 0))
-  )
-}
-
-export function isRunningCharityData(
-  value: unknown,
-): value is RunningCharityData {
-  if (!value || typeof value !== 'object') {
-    return false
-  }
-
-  const data = value as Partial<RunningCharityData>
-
-  return (
-    hasValidDistanceElevation(data) &&
-    (typeof data.durationSeconds === 'undefined' ||
-      (Number.isInteger(data.durationSeconds) &&
-        Number(data.durationSeconds) > 0)) &&
-    !('rankings' in data) &&
-    !('resultStatus' in data)
-  )
-}
-
-function hasValidDistanceElevation(value: {
-  distanceMeters?: unknown
-  elevationGainMeters?: unknown
-}) {
-  return (
-    Number.isInteger(value.distanceMeters) &&
-    Number(value.distanceMeters) > 0 &&
-    Number.isInteger(value.elevationGainMeters) &&
-    Number(value.elevationGainMeters) >= 0
-  )
-}
-
-function hasValidCompetitionResults(
-  data: Partial<CompetitionResultData>,
+export function definitionHasField(
+  definition: ActivityDefinition | undefined,
+  key: ActivityFieldDefinition['key'],
 ) {
-  const rankings = data.rankings as
-    | Partial<CompetitionResultData['rankings']>
-    | undefined
+  return Boolean(definition?.fields.some((field) => field.key === key))
+}
 
-  if (
-    !Number.isInteger(data.durationSeconds) ||
-    Number(data.durationSeconds) <= 0 ||
-    !isResultStatus(data.resultStatus) ||
-    !rankings
-  ) {
+export function isRaceData(
+  value: unknown,
+  includeElevation: boolean,
+): value is RaceData {
+  if (!value || typeof value !== 'object') {
     return false
   }
 
-  const rankingValues = [
-    rankings.overall,
-    rankings.sex,
-    rankings.category,
-  ]
+  const data = value as Partial<RaceData>
+  const hasElevation =
+    typeof data.elevationGainMeters === 'number' &&
+    Number.isInteger(data.elevationGainMeters) &&
+    data.elevationGainMeters >= 0
+
+  return (
+    Number.isInteger(data.distanceMeters) &&
+    Number(data.distanceMeters) > 0 &&
+    (includeElevation
+      ? hasElevation
+      : typeof data.elevationGainMeters === 'undefined') &&
+    Number.isInteger(data.durationSeconds) &&
+    Number(data.durationSeconds) > 0 &&
+    isResultStatus(data.resultStatus) &&
+    hasValidRankings(data)
+  )
+}
+
+function hasValidRankings(data: Partial<RaceData>) {
+  if (!data.rankings || typeof data.rankings !== 'object') {
+    return false
+  }
 
   if (data.resultStatus === 'ranked') {
-    return (
-      rankingValues.every((ranking) => isValidRankedResult(ranking)) &&
-      typeof data.statusComment === 'undefined'
+    return Object.values(data.rankings).every(isStandardRanking)
+  }
+
+  if (
+    data.resultStatus === 'dnf' ||
+    data.resultStatus === 'dsq' ||
+    data.resultStatus === 'dns'
+  ) {
+    const sentinel = resultSentinels[data.resultStatus]
+    return Object.values(data.rankings).every(
+      (ranking) => ranking.rank === sentinel,
     )
   }
 
-  const sentinel = resultSentinels[data.resultStatus]
-  return (
-    rankingValues.every(
-      (ranking) =>
-        ranking?.rank === sentinel &&
-        typeof ranking.participantCount === 'undefined',
-    ) &&
-    (typeof data.statusComment === 'undefined' ||
-      typeof data.statusComment === 'string')
-  )
+  return false
 }
 
-function isResultStatus(value: unknown): value is ResultStatus {
-  return (
-    value === 'ranked' ||
-    value === 'dnf' ||
-    value === 'dsq' ||
-    value === 'dns'
-  )
-}
-
-function isValidRankedResult(value: unknown) {
+function isStandardRanking(value: unknown) {
   if (!value || typeof value !== 'object') {
     return false
   }
 
-  const ranking = value as {
-    rank?: unknown
-    participantCount?: unknown
-  }
-  const hasRank = typeof ranking.rank !== 'undefined'
-  const hasParticipants = typeof ranking.participantCount !== 'undefined'
+  const ranking = value as { rank?: unknown; participantCount?: unknown }
+  const rankIsValid =
+    typeof ranking.rank === 'undefined' ||
+    (Number.isInteger(ranking.rank) && Number(ranking.rank) > 0)
+  const participantsAreValid =
+    typeof ranking.participantCount === 'undefined' ||
+    (Number.isInteger(ranking.participantCount) &&
+      Number(ranking.participantCount) > 0 &&
+      typeof ranking.rank === 'number' &&
+      Number(ranking.participantCount) >= ranking.rank)
 
-  if (hasRank && (!Number.isInteger(ranking.rank) || Number(ranking.rank) <= 0)) {
-    return false
-  }
+  return rankIsValid && participantsAreValid
+}
 
-  if (
-    hasParticipants &&
-    (!Number.isInteger(ranking.participantCount) ||
-      Number(ranking.participantCount) <= 0 ||
-      !hasRank ||
-      Number(ranking.participantCount) < Number(ranking.rank))
-  ) {
-    return false
-  }
+function isResultStatus(value: unknown): value is ResultStatus {
+  return value === 'ranked' || value === 'dnf' || value === 'dsq' || value === 'dns'
+}
 
-  return true
+export function getMedalForRank(rank?: number): MedalKind | undefined {
+  if (rank === 1) return 'gold'
+  if (rank === 2) return 'silver'
+  if (rank === 3) return 'bronze'
+  if (rank === 4) return 'chocolate'
+  return undefined
 }

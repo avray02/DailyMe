@@ -2,200 +2,134 @@ import type {
   MedalKind,
   Metric,
   Performance,
-  PerformanceStage,
-  RankingKey,
   RankingResult,
 } from '../../types/performance'
 import {
-  isRoadCyclingCompetitionData,
-  isRunningCharityData,
-  isRunningCompetitionData,
+  getMedalForRank,
   resultStatusLabels,
 } from './performanceCatalog'
 
-const rankingLabels: Record<RankingKey, string> = {
-  overall: 'Classement general',
-  sex: 'Classement sexe',
-  category: 'Classement categorie',
-}
-
 export function getPerformanceMetrics(performance: Performance): Metric[] {
-  const runningCompetition = isRunningCompetitionData(performance.data)
-    ? performance.data
-    : undefined
-  const runningCharity = isRunningCharityData(performance.data)
-    ? performance.data
-    : undefined
-  const roadCyclingCompetition = isRoadCyclingCompetitionData(performance.data)
-    ? performance.data
-    : undefined
-
-  const data =
-    runningCompetition ?? runningCharity ?? roadCyclingCompetition
-  const competitionData = runningCompetition ?? roadCyclingCompetition
-
-  if (!data) {
-    return []
-  }
   const metrics: Metric[] = [
     {
       key: 'distance',
       label: 'Distance',
-      value: formatDistance(data.distanceMeters),
-      normalizedValue: data.distanceMeters,
-    },
-    {
-      key: 'elevation',
-      label: 'Denivele positif',
-      value: `${formatInteger(data.elevationGainMeters)} m`,
-      normalizedValue: data.elevationGainMeters,
+      value: formatDistance(performance.data.distanceMeters),
+      normalizedValue: performance.data.distanceMeters,
     },
   ]
 
-  if (typeof data.durationSeconds === 'number') {
+  if (typeof performance.data.elevationGainMeters === 'number') {
     metrics.push({
-      key: 'duration',
-      label: 'Temps',
-      value: formatDuration(data.durationSeconds),
-      normalizedValue: data.durationSeconds,
+      key: 'elevation',
+      label: 'Denivele positif',
+      value: `${formatInteger(performance.data.elevationGainMeters)} m`,
+      normalizedValue: performance.data.elevationGainMeters,
     })
   }
 
-  if (roadCyclingCompetition) {
+  metrics.push({
+    key: 'duration',
+    label: 'Temps',
+    value: formatDuration(performance.data.durationSeconds),
+    normalizedValue: performance.data.durationSeconds,
+  })
+
+  if (
+    performance.categoryKey === 'running' ||
+    performance.categoryKey === 'swimming'
+  ) {
+    metrics.push({
+      key: 'pace',
+      label:
+        performance.categoryKey === 'swimming'
+          ? 'Allure moyenne'
+          : 'Rythme moyen',
+      value: formatPace(
+        performance.data.distanceMeters,
+        performance.data.durationSeconds,
+        performance.categoryKey === 'swimming' ? 100 : 1000,
+      ),
+    })
+  } else {
     metrics.push({
       key: 'speed',
       label: 'Vitesse moyenne',
       value: formatSpeed(
-        roadCyclingCompetition.distanceMeters,
-        roadCyclingCompetition.durationSeconds,
+        performance.data.distanceMeters,
+        performance.data.durationSeconds,
       ),
     })
-
-    if (typeof roadCyclingCompetition.averagePowerWatts === 'number') {
-      metrics.push({
-        key: 'power',
-        label: 'Puissance moyenne',
-        value: `${formatInteger(roadCyclingCompetition.averagePowerWatts)} W`,
-        normalizedValue: roadCyclingCompetition.averagePowerWatts,
-      })
-    }
-
-    if (typeof roadCyclingCompetition.stageCount === 'number') {
-      metrics.push({
-        key: 'stages',
-        label: "Nombre d'etapes",
-        value: `${formatInteger(roadCyclingCompetition.stageCount)} etape${roadCyclingCompetition.stageCount > 1 ? 's' : ''}`,
-        normalizedValue: roadCyclingCompetition.stageCount,
-      })
-    }
   }
 
-  if (competitionData) {
-    for (const key of ['overall', 'sex', 'category'] as RankingKey[]) {
-      const ranking = competitionData.rankings[key]
+  const primaryRanking =
+    typeof performance.data.rankings.sex.rank === 'number'
+      ? {
+          label: 'Classement sexe',
+          value: performance.data.rankings.sex,
+        }
+      : typeof performance.data.rankings.overall.rank === 'number'
+        ? {
+            label: 'Classement general',
+            value: performance.data.rankings.overall,
+          }
+        : null
 
-      if (typeof ranking?.rank !== 'number') {
-        continue
-      }
-
-      metrics.push({
-        key: 'rank',
-        label: rankingLabels[key],
-        value: formatRanking(ranking),
-        normalizedValue: ranking.rank,
-        medal: getMedalForRank(ranking.rank),
-      })
-    }
+  if (primaryRanking) {
+    metrics.push(toRankingMetric(primaryRanking.label, primaryRanking.value))
   }
 
-  return metrics
-}
-
-export function getPerformanceStageMetrics(stage: PerformanceStage): Metric[] {
-  const metrics: Metric[] = [
-    {
-      key: 'distance',
-      label: 'Distance',
-      value: formatDistance(stage.data.distanceMeters),
-      normalizedValue: stage.data.distanceMeters,
-    },
-    {
-      key: 'elevation',
-      label: 'Denivele positif',
-      value: `${formatInteger(stage.data.elevationGainMeters)} m`,
-      normalizedValue: stage.data.elevationGainMeters,
-    },
-    {
-      key: 'duration',
-      label: 'Temps',
-      value: formatDuration(stage.data.durationSeconds),
-      normalizedValue: stage.data.durationSeconds,
-    },
-    {
-      key: 'speed',
-      label: 'Vitesse moyenne',
-      value: formatSpeed(
-        stage.data.distanceMeters,
-        stage.data.durationSeconds,
+  if (typeof performance.data.rankings.category.rank === 'number') {
+    metrics.push(
+      toRankingMetric(
+        'Classement categorie',
+        performance.data.rankings.category,
       ),
-    },
-  ]
-
-  if (typeof stage.data.averagePowerWatts === 'number') {
-    metrics.push({
-      key: 'power',
-      label: 'Puissance moyenne',
-      value: `${formatInteger(stage.data.averagePowerWatts)} W`,
-      normalizedValue: stage.data.averagePowerWatts,
-    })
-  }
-
-  for (const key of ['overall', 'sex', 'category'] as RankingKey[]) {
-    const ranking = stage.data.rankings[key]
-
-    if (typeof ranking.rank === 'number') {
-      metrics.push({
-        key: 'rank',
-        label: rankingLabels[key],
-        value: formatRanking(ranking),
-        normalizedValue: ranking.rank,
-        medal: getMedalForRank(ranking.rank),
-      })
-    }
+    )
   }
 
   return metrics
 }
 
 export function getStatusComment(performance: Performance) {
-  if (
-    isRunningCompetitionData(performance.data) ||
-    isRoadCyclingCompetitionData(performance.data)
-  ) {
-    return performance.data.statusComment
-  }
-
-  return undefined
+  return performance.data.statusComment
 }
 
 export function hasRanking(performance: Performance) {
-  return (
-    (isRunningCompetitionData(performance.data) ||
-      isRoadCyclingCompetitionData(performance.data)) &&
-    Object.values(performance.data.rankings).some(
-      (ranking) => typeof ranking.rank === 'number',
-    )
+  return Object.values(performance.data.rankings).some(
+    (ranking) => typeof ranking.rank === 'number' && ranking.rank > 0,
   )
+}
+
+function toRankingMetric(label: string, ranking: RankingResult): Metric {
+  return {
+    key: 'rank',
+    label,
+    value: formatRanking(ranking),
+    normalizedValue: ranking.rank,
+    medal: getMedalForRank(ranking.rank),
+  }
 }
 
 function formatSpeed(distanceMeters: number, durationSeconds: number) {
   const kilometersPerHour =
-    (distanceMeters / 1000) / (durationSeconds / 3600)
-
+    distanceMeters / 1000 / (durationSeconds / 3600)
   return `${new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }).format(kilometersPerHour)} km/h`
+}
+
+function formatPace(
+  distanceMeters: number,
+  durationSeconds: number,
+  referenceMeters: number,
+) {
+  const secondsPerReference =
+    durationSeconds / (distanceMeters / referenceMeters)
+  const minutes = Math.floor(secondsPerReference / 60)
+  const seconds = Math.round(secondsPerReference % 60)
+  return `${minutes}:${String(seconds).padStart(2, '0')} / ${referenceMeters === 100 ? '100 m' : 'km'}`
 }
 
 export function formatDistance(distanceMeters: number) {
@@ -212,38 +146,27 @@ export function formatDuration(durationSeconds: number) {
   const hours = Math.floor(durationSeconds / 3600)
   const minutes = Math.floor((durationSeconds % 3600) / 60)
   const seconds = durationSeconds % 60
-
   return `${hours} H : ${padTime(minutes)} M : ${padTime(seconds)} S`
 }
 
 function formatRanking(ranking: RankingResult) {
-  if (ranking.rank === -1) {
-    return resultStatusLabels.dnf
-  }
-
-  if (ranking.rank === -2) {
-    return resultStatusLabels.dsq
-  }
-
-  if (ranking.rank === -3) {
-    return resultStatusLabels.dns
-  }
-
-  if (typeof ranking.rank !== 'number') {
-    return ''
-  }
+  if (ranking.rank === -1) return resultStatusLabels.dnf
+  if (ranking.rank === -2) return resultStatusLabels.dsq
+  if (ranking.rank === -3) return resultStatusLabels.dns
+  if (typeof ranking.rank !== 'number') return ''
 
   return ranking.participantCount
     ? `${formatInteger(ranking.rank)} / ${formatInteger(ranking.participantCount)}`
     : formatInteger(ranking.rank)
 }
 
-export function getMedalForRank(rank?: number): MedalKind | undefined {
-  if (rank === 1) return 'gold'
-  if (rank === 2) return 'silver'
-  if (rank === 3) return 'bronze'
-  if (rank === 4) return 'chocolate'
-  return undefined
+export function getMedalLabel(medal: MedalKind) {
+  return {
+    gold: "Medaille d'or",
+    silver: "Medaille d'argent",
+    bronze: 'Medaille de bronze',
+    chocolate: 'Medaille en chocolat',
+  }[medal]
 }
 
 function formatInteger(value: number) {

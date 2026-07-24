@@ -1,64 +1,40 @@
-export type SportKey =
+export type SportCategoryKey =
   | 'running'
-  | 'trail'
-  | 'triathlon'
   | 'cycling'
-  | 'road-cycling'
   | 'swimming'
-  | 'strength'
-  | 'hiking'
-  | 'skiing'
-  | 'backcountry-skiing'
-  | 'other'
+  | 'winter-sports'
 
-export type ActivityTypeKey = 'competition' | 'adventure' | 'charity'
+export type SportKey =
+  | 'road-running'
+  | 'trail-running'
+  | 'road-cycling'
+  | 'mountain-biking'
+  | 'gravel-cycling'
+  | 'open-water-swimming'
+  | 'ski-mountaineering'
+  | 'cross-country-skiing-skating'
+  | 'cross-country-skiing-classic'
 
-export type ActivityDefinitionId =
-  | 'running__competition'
-  | 'running__charity'
-  | 'road-cycling__competition'
-
-export type RankingKey = 'overall' | 'sex' | 'category'
+export type ActivityTypeKey = 'race'
+export type ActivityDefinitionId = `${SportKey}__race`
+export type RankingKey = 'sex' | 'overall' | 'category'
 export type ResultStatus = 'ranked' | 'dnf' | 'dsq' | 'dns'
 export type MedalKind = 'gold' | 'silver' | 'bronze' | 'chocolate'
-export type EventFormat = 'single' | 'stage-race'
-export type ActivityEnvironment = 'outdoor' | 'indoor'
+export type ActivityEnvironment = 'outdoor'
 
 export type RankingResult = {
   rank?: number
   participantCount?: number
 }
 
-export type DistanceElevationData = {
+export type RaceData = {
   distanceMeters: number
-  elevationGainMeters: number
-}
-
-export type CompetitionResultData = {
+  elevationGainMeters?: number
   durationSeconds: number
   resultStatus: ResultStatus
   rankings: Record<RankingKey, RankingResult>
   statusComment?: string
 }
-
-export type RunningCompetitionData = DistanceElevationData &
-  CompetitionResultData
-
-export type RunningCharityData = DistanceElevationData & {
-  durationSeconds?: number
-}
-
-export type RoadCyclingCompetitionData = DistanceElevationData &
-  CompetitionResultData & {
-    eventFormat: EventFormat
-    stageCount?: number
-    averagePowerWatts?: number
-  }
-
-export type ActivityData =
-  | RunningCompetitionData
-  | RunningCharityData
-  | RoadCyclingCompetitionData
 
 export type MetricKey =
   | 'distance'
@@ -67,15 +43,12 @@ export type MetricKey =
   | 'rank'
   | 'pace'
   | 'speed'
-  | 'power'
-  | 'stages'
   | 'custom'
 
 export type Metric = {
   key: MetricKey
   label: string
   value: string
-  unit?: string
   normalizedValue?: number
   medal?: MedalKind
 }
@@ -98,40 +71,18 @@ export type SimplifiedGpxTrack = {
   points: TrackPoint[]
 }
 
-export type PerformanceStageData = DistanceElevationData &
-  CompetitionResultData & {
-    averagePowerWatts?: number
-  }
-
-export type PerformanceStage = {
-  id: string
-  performanceId: string
-  ownerUid: string
-  order: number
-  title: string
-  date: CalendarDate
-  data: PerformanceStageData
-  track?: SimplifiedGpxTrack
-  createdAt: string
-  updatedAt: string
-}
-
-export type ActivityDateRange = {
-  start: CalendarDate
-  end?: CalendarDate
-}
-
 export type Performance = {
   id: string
   ownerUid: string
-  activityDefinitionId: ActivityDefinitionId | string
+  activityDefinitionId: ActivityDefinitionId
   schemaVersion: number
-  title: string
+  categoryKey: SportCategoryKey
   sportKey: SportKey
   activityTypeKey: ActivityTypeKey
-  status: 'draft' | 'planned' | 'completed'
-  date: ActivityDateRange
-  data: ActivityData
+  title: string
+  status: 'completed'
+  date: CalendarDate
+  data: RaceData
   track?: SimplifiedGpxTrack
   notes?: string
   tags: string[]
@@ -140,42 +91,62 @@ export type Performance = {
   updatedAt: string
 }
 
-export type SportDefinition = {
-  key: SportKey
+export type SportCategoryDefinition = {
+  key: SportCategoryKey
   label: string
   accent: string
-  metrics: MetricKey[]
+  softAccent: string
+}
+
+export type SportDefinition = {
+  key: SportKey
+  categoryKey: SportCategoryKey
+  label: string
 }
 
 export type ActivityFieldDefinition = {
-  key: string
+  key:
+    | 'distanceMeters'
+    | 'elevationGainMeters'
+    | 'durationSeconds'
+    | 'resultStatus'
+    | 'rankings'
+    | 'statusComment'
+    | 'track'
+    | 'notes'
   label: string
-  section: 'description' | 'results'
+  section: 'description' | 'results' | 'route' | 'notes'
   valueType:
     | 'distance'
     | 'integer'
     | 'duration'
     | 'status'
     | 'rankings'
+    | 'gpx'
     | 'text'
-    | 'choice'
   required: boolean
   storageUnit?: 'm' | 's'
   inputUnits?: Array<'m' | 'km'>
+  defaultInputUnit?: 'm' | 'km'
   displayFormat?:
     | 'adaptive-distance'
     | 'meters'
     | 'hms'
     | 'status'
     | 'rankings'
+    | 'map'
+    | 'text'
 }
 
 export type ActivityDefinition = {
   id: ActivityDefinitionId
+  categoryKey: SportCategoryKey
+  categoryLabel: string
+  categoryAccent: string
   sportKey: SportKey
   sportLabel: string
   activityTypeKey: ActivityTypeKey
-  activityTypeLabel: string
+  activityTypeLabel: 'Course'
   environment: ActivityEnvironment
   active: boolean
   schemaVersion: number

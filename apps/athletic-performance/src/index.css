@@ -653,61 +653,6 @@ a {
   font-weight: 780;
 }
 
-.sport-running {
-  --sport-accent: #c64f3d;
-  --sport-soft: #fbe9e5;
-}
-
-.sport-trail {
-  --sport-accent: #397348;
-  --sport-soft: #e7f1e9;
-}
-
-.sport-triathlon {
-  --sport-accent: #2563a8;
-  --sport-soft: #e7eff8;
-}
-
-.sport-cycling {
-  --sport-accent: #c2690c;
-  --sport-soft: #fbefdf;
-}
-
-.sport-road-cycling {
-  --sport-accent: #a85808;
-  --sport-soft: #fbefdf;
-}
-
-.sport-swimming {
-  --sport-accent: #087f95;
-  --sport-soft: #e1f2f5;
-}
-
-.sport-strength {
-  --sport-accent: #7145a3;
-  --sport-soft: #f0e9f7;
-}
-
-.sport-hiking {
-  --sport-accent: #5d7335;
-  --sport-soft: #edf1e5;
-}
-
-.sport-skiing {
-  --sport-accent: #2a7189;
-  --sport-soft: #e5f0f3;
-}
-
-.sport-backcountry-skiing {
-  --sport-accent: #536473;
-  --sport-soft: #e9edef;
-}
-
-.sport-other {
-  --sport-accent: #4f6268;
-  --sport-soft: #edf1f2;
-}
-
 .detail-drawer {
   position: fixed;
   inset: 0;
@@ -991,6 +936,33 @@ a {
   color: var(--accent);
 }
 
+.category-selection-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.category-selection-grid .selection-choice {
+  justify-content: flex-start;
+  border-color: color-mix(in srgb, var(--choice-accent) 28%, var(--line));
+}
+
+.category-selection-grid .selection-choice.is-selected {
+  border-color: var(--choice-accent);
+  background: var(--choice-soft);
+  color: var(--choice-accent);
+}
+
+.category-swatch {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  background: var(--choice-accent);
+}
+
+.sport-selection-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .type-choice-row {
   display: flex;
   flex-wrap: wrap;
@@ -1071,6 +1043,11 @@ a {
   font-weight: 650;
 }
 
+.form-grid .field-hint {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .wide-field {
   grid-column: 1 / -1;
 }
@@ -1139,77 +1116,10 @@ a {
   gap: 20px;
 }
 
-.stage-race-content,
 .gpx-form-field {
   display: grid;
   min-width: 0;
   gap: 20px;
-}
-
-.stage-entry-actions {
-  display: flex;
-  justify-content: flex-start;
-  border-top: 1px solid var(--line);
-  padding-top: 20px;
-}
-
-.stage-entry-actions .secondary-button {
-  width: auto;
-}
-
-.stage-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 14px;
-}
-
-.stage-tabs button {
-  min-height: 38px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 0 14px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 760;
-}
-
-.stage-tabs button.is-active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-}
-
-.stage-tabs .stage-add-button {
-  width: 38px;
-  padding: 0;
-}
-
-.drawer-stage-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 18px;
-}
-
-.drawer-stage-tabs button {
-  min-height: 34px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 0 10px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 740;
-}
-
-.drawer-stage-tabs button.is-active {
-  border-color: var(--sport-accent);
-  background: var(--sport-soft);
-  color: var(--sport-accent);
 }
 
 .drawer-panel .gpx-visuals {
@@ -1220,29 +1130,6 @@ a {
   min-height: 220px;
   border-top: 1px solid var(--line);
   border-left: 0;
-}
-
-.stage-panel {
-  display: grid;
-  gap: 24px;
-  padding-top: 20px;
-}
-
-.stage-panel-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.stage-panel-heading > div {
-  display: grid;
-  gap: 4px;
-}
-
-.stage-panel-heading strong {
-  font-family: var(--font-display);
-  font-size: 1.1rem;
 }
 
 .danger-button {
@@ -1263,79 +1150,6 @@ a {
 .danger-button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
-}
-
-.stage-block {
-  display: grid;
-  gap: 16px;
-  border-top: 1px solid var(--line);
-  padding-top: 20px;
-}
-
-.stage-block h3 {
-  margin: 0;
-  font-size: 0.95rem;
-}
-
-.stage-power-field {
-  margin-top: 16px;
-}
-
-.stage-rankings {
-  display: grid;
-  gap: 20px;
-  margin-top: 20px;
-}
-
-.general-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface-soft);
-}
-
-.general-summary > span {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px 8px;
-  min-width: 0;
-  padding: 15px;
-}
-
-.general-summary > span:nth-child(3n + 2),
-.general-summary > span:nth-child(3n + 3) {
-  border-left: 1px solid var(--line);
-}
-
-.general-summary > span:nth-child(n + 4) {
-  border-top: 1px solid var(--line);
-}
-
-.general-summary svg {
-  grid-row: 1 / 3;
-  color: var(--accent);
-}
-
-.general-summary small {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-
-.general-summary strong {
-  overflow-wrap: anywhere;
-  font-size: 0.88rem;
-}
-
-.calculated-result {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 650;
 }
 
 .gpx-upload {
@@ -1486,6 +1300,12 @@ a {
 .ranking-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ranking-options {
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -1804,26 +1624,8 @@ a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .stage-panel-heading {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .stage-panel-heading .danger-button {
-    align-self: flex-start;
-  }
-
-  .general-summary,
   .gpx-visuals {
     grid-template-columns: 1fr;
-  }
-
-  .general-summary > span:nth-child(n) {
-    border-left: 0;
-  }
-
-  .general-summary > span + span {
-    border-top: 1px solid var(--line);
   }
 
   .elevation-profile {

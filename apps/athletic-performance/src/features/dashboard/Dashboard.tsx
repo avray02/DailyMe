@@ -10,7 +10,6 @@ import {
   CirclePlus,
   Filter,
   Gauge,
-  ListOrdered,
   Medal,
   Mountain,
   Pencil,
@@ -20,37 +19,33 @@ import {
   Trash2,
   Trophy,
   X,
-  Zap,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import type {
+  Metric,
+  Performance,
+  SportCategoryKey,
+  SportKey,
+} from '../../types/performance'
+import { GpxTrackPreview } from '../performance-form/GpxTrackPreview'
 import {
-  activityLabels,
-  activityOptions,
-  isRoadCyclingCompetitionData,
+  categoryByKey,
   sportByKey,
+  sportCategories,
   sportOptions,
 } from '../performances/performanceCatalog'
 import {
   deletePerformance,
-  getPerformanceStages,
   listPerformances,
 } from '../performances/performanceRepository'
 import {
-  getStatusComment,
+  getMedalLabel,
   getPerformanceMetrics,
-  getPerformanceStageMetrics,
+  getStatusComment,
   hasRanking,
 } from '../performances/performanceMetrics'
-import type {
-  ActivityTypeKey,
-  Metric,
-  Performance,
-  PerformanceStage,
-  SportKey,
-} from '../../types/performance'
-import { GpxTrackPreview } from '../performance-form/GpxTrackPreview'
 
 type DashboardNotice = {
   notice?: string
@@ -63,8 +58,6 @@ const metricIcons: Record<Metric['key'], LucideIcon> = {
   rank: Award,
   pace: Gauge,
   speed: Gauge,
-  power: Zap,
-  stages: ListOrdered,
   custom: Activity,
 }
 
@@ -73,15 +66,14 @@ export function Dashboard() {
   const location = useLocation()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [category, setCategory] = useState<SportCategoryKey | 'all'>('all')
   const [sport, setSport] = useState<SportKey | 'all'>('all')
-  const [activity, setActivity] = useState<ActivityTypeKey | 'all'>('all')
   const [selected, setSelected] = useState<Performance | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Performance | null>(null)
   const [notice, setNotice] = useState(
     (location.state as DashboardNotice | null)?.notice ?? '',
   )
   const ownerUid = user?.uid ?? 'local-demo-user'
-
   const performancesQuery = useQuery({
     queryKey: ['performances', ownerUid],
     queryFn: () => listPerformances(ownerUid),
@@ -90,50 +82,49 @@ export function Dashboard() {
     () => performancesQuery.data ?? [],
     [performancesQuery.data],
   )
-  const availableSports = useMemo(
+  const availableCategories = useMemo(
     () =>
-      sportOptions.filter((option) =>
-        performances.some((performance) => performance.sportKey === option.key),
-      ),
-    [performances],
-  )
-  const availableActivities = useMemo(
-    () =>
-      activityOptions.filter((option) =>
+      sportCategories.filter((option) =>
         performances.some(
-          (performance) => performance.activityTypeKey === option.key,
+          (performance) => performance.categoryKey === option.key,
         ),
       ),
     [performances],
   )
+  const availableSports = useMemo(
+    () =>
+      sportOptions.filter(
+        (option) =>
+          (category === 'all' || option.categoryKey === category) &&
+          performances.some(
+            (performance) => performance.sportKey === option.key,
+          ),
+      ),
+    [category, performances],
+  )
   const filtered = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
-
     return performances.filter((performance) => {
       const metrics = getPerformanceMetrics(performance)
       const searchText = [
         performance.title,
         ...performance.searchKeywords,
-        ...metrics.flatMap((metric) => [
-          metric.label,
-          metric.value,
-        ]),
+        ...metrics.flatMap((metric) => [metric.label, metric.value]),
       ]
         .join(' ')
         .toLowerCase()
-      const matchesSearch =
-        !normalizedSearch || searchText.includes(normalizedSearch)
-      const matchesSport = sport === 'all' || performance.sportKey === sport
-      const matchesActivity =
-        activity === 'all' || performance.activityTypeKey === activity
 
-      return matchesSearch && matchesSport && matchesActivity
+      return (
+        (!normalizedSearch || searchText.includes(normalizedSearch)) &&
+        (category === 'all' || performance.categoryKey === category) &&
+        (sport === 'all' || performance.sportKey === sport)
+      )
     })
-  }, [activity, performances, search, sport])
+  }, [category, performances, search, sport])
   const yearGroups = useMemo(
     () =>
       filtered.reduce<Record<string, Performance[]>>((groups, performance) => {
-        const year = String(performance.date.start.year)
+        const year = String(performance.date.year)
         groups[year] = groups[year] ?? []
         groups[year].push(performance)
         return groups
@@ -145,18 +136,15 @@ export function Dashboard() {
   )
   const currentYear = new Date().getFullYear()
   const currentYearCount = performances.filter(
-    (performance) => performance.date.start.year === currentYear,
+    (performance) => performance.date.year === currentYear,
   ).length
   const rankedCount = performances.filter(hasRanking).length
-
   const deleteMutation = useMutation({
-    mutationFn: (performanceId: string) =>
-      deletePerformance(performanceId, ownerUid),
+    mutationFn: deletePerformance,
     onSuccess: async (_, performanceId) => {
       if (selected?.id === performanceId) {
         setSelected(null)
       }
-
       setDeleteTarget(null)
       setNotice('Performance supprimee.')
       queryClient.removeQueries({
@@ -170,10 +158,7 @@ export function Dashboard() {
 
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
-      if (event.key !== 'Escape') {
-        return
-      }
-
+      if (event.key !== 'Escape') return
       if (deleteTarget) {
         setDeleteTarget(null)
       } else {
@@ -185,20 +170,31 @@ export function Dashboard() {
     return () => window.removeEventListener('keydown', handleEscape)
   }, [deleteTarget])
 
+  function chooseCategory(nextCategory: SportCategoryKey | 'all') {
+    setCategory(nextCategory)
+    if (
+      sport !== 'all' &&
+      nextCategory !== 'all' &&
+      sportByKey[sport].categoryKey !== nextCategory
+    ) {
+      setSport('all')
+    }
+  }
+
   return (
     <>
       <section className="dashboard-header" aria-labelledby="dashboard-title">
         <div className="page-heading">
-          <p className="eyebrow">Journal sportif</p>
+          <p className="eyebrow">Journal de competitions</p>
           <h1 id="dashboard-title">Mes performances</h1>
           <p>
-            Retrouve chaque activite, ses resultats et son evolution au fil des
+            Retrouve chaque course, ses resultats et son parcours au fil des
             saisons.
           </p>
         </div>
         <Link className="primary-button" to="/new">
           <CirclePlus size={18} aria-hidden="true" />
-          Ajouter une activite
+          Ajouter une performance
         </Link>
       </section>
 
@@ -206,7 +202,7 @@ export function Dashboard() {
         <SummaryItem label="Total" value={performances.length} />
         <SummaryItem label={String(currentYear)} value={currentYearCount} />
         <SummaryItem
-          label="Disciplines"
+          label="Sports"
           value={new Set(performances.map((item) => item.sportKey)).size}
         />
         <SummaryItem label="Classements" value={rankedCount} />
@@ -232,7 +228,7 @@ export function Dashboard() {
           <Search size={18} aria-hidden="true" />
           <input
             type="search"
-            placeholder="Rechercher une course, une valeur, une annee..."
+            placeholder="Rechercher une course, un sport, une annee..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -241,8 +237,29 @@ export function Dashboard() {
         <div className="filter-group">
           <span className="filter-label">
             <Filter size={16} aria-hidden="true" />
-            Sport
+            Categorie
           </span>
+          <div className="filter-row" role="group" aria-label="Categorie">
+            <FilterButton
+              active={category === 'all'}
+              onClick={() => chooseCategory('all')}
+            >
+              Toutes
+            </FilterButton>
+            {availableCategories.map((option) => (
+              <FilterButton
+                key={option.key}
+                active={category === option.key}
+                onClick={() => chooseCategory(option.key)}
+              >
+                {option.label}
+              </FilterButton>
+            ))}
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <span className="filter-label">Sport</span>
           <div className="filter-row" role="group" aria-label="Sport">
             <FilterButton
               active={sport === 'all'}
@@ -255,27 +272,6 @@ export function Dashboard() {
                 key={option.key}
                 active={sport === option.key}
                 onClick={() => setSport(option.key)}
-              >
-                {option.label}
-              </FilterButton>
-            ))}
-          </div>
-        </div>
-
-        <div className="filter-group">
-          <span className="filter-label">Type</span>
-          <div className="filter-row" role="group" aria-label="Type">
-            <FilterButton
-              active={activity === 'all'}
-              onClick={() => setActivity('all')}
-            >
-              Tous
-            </FilterButton>
-            {availableActivities.map((option) => (
-              <FilterButton
-                key={option.key}
-                active={activity === option.key}
-                onClick={() => setActivity(option.key)}
               >
                 {option.label}
               </FilterButton>
@@ -303,11 +299,15 @@ export function Dashboard() {
 
       <section className="timeline" aria-label="Timeline des performances">
         {sortedYears.map((year) => (
-          <section className="year-group" key={year} aria-labelledby={`year-${year}`}>
+          <section
+            className="year-group"
+            key={year}
+            aria-labelledby={`year-${year}`}
+          >
             <header className="year-marker">
               <h2 id={`year-${year}`}>{year}</h2>
               <span>
-                {yearGroups[year].length} activite
+                {yearGroups[year].length} course
                 {yearGroups[year].length > 1 ? 's' : ''}
               </span>
             </header>
@@ -396,12 +396,18 @@ function PerformanceCard({
   onDelete: () => void
 }) {
   const sport = sportByKey[performance.sportKey]
+  const category = categoryByKey[performance.categoryKey]
   const SportIcon = sport.icon
   const visibleMetrics = getPerformanceMetrics(performance).slice(0, 4)
+  const style = {
+    '--sport-accent': category.accent,
+    '--sport-soft': category.softAccent,
+  } as CSSProperties
 
   return (
     <motion.article
-      className={`performance-card sport-${performance.sportKey}`}
+      className={`performance-card category-${performance.categoryKey}`}
+      style={style}
       initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-32px' }}
@@ -436,27 +442,21 @@ function PerformanceCard({
         <div className="card-meta">
           <span>
             <CalendarDays size={15} aria-hidden="true" />
-            {formatDate(performance)}
+            {formatDate(performance.date)}
           </span>
-          <span className="activity-badge">
-            {activityLabels[performance.activityTypeKey]}
-          </span>
+          <span className="activity-badge">Course</span>
         </div>
         <h3>{performance.title}</h3>
         <p className="sport-label">{sport.label}</p>
 
-        {visibleMetrics.length ? (
-          <div className="card-metrics">
-            {visibleMetrics.map((metric, metricIndex) => (
-              <MetricValue
-                key={`${metric.key}-${metric.label}-${metricIndex}`}
-                metric={metric}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="empty-metrics">Aucune mesure renseignee</p>
-        )}
+        <div className="card-metrics">
+          {visibleMetrics.map((metric, metricIndex) => (
+            <MetricValue
+              key={`${metric.key}-${metric.label}-${metricIndex}`}
+              metric={metric}
+            />
+          ))}
+        </div>
 
         <span className="details-link">
           Voir les details
@@ -469,26 +469,25 @@ function PerformanceCard({
 
 function MetricValue({ metric }: { metric: Metric }) {
   const Icon = metricIcons[metric.key]
-
   return (
-    <span className="metric-value">
+    <div className="metric-value">
       <Icon size={16} aria-hidden="true" />
       <span>
         <small>{metric.label}</small>
-        <span className="metric-result">
-          <strong>{metric.value}</strong>
+        <strong className="metric-result">
+          {metric.value}
           {metric.medal ? (
             <span
               className={`medal-icon medal-${metric.medal}`}
-              title={medalLabel(metric.medal)}
+              title={getMedalLabel(metric.medal)}
+              aria-label={getMedalLabel(metric.medal)}
             >
-              <Medal size={16} aria-hidden="true" />
-              <span className="sr-only">{medalLabel(metric.medal)}</span>
+              <Medal size={14} aria-hidden="true" />
             </span>
           ) : null}
-        </span>
+        </strong>
       </span>
-    </span>
+    </div>
   )
 }
 
@@ -501,39 +500,15 @@ function PerformanceDrawer({
   onClose: () => void
   onDelete: () => void
 }) {
-  const { user } = useAuth()
   const sport = sportByKey[performance.sportKey]
+  const category = categoryByKey[performance.categoryKey]
   const SportIcon = sport.icon
   const metrics = getPerformanceMetrics(performance)
   const statusComment = getStatusComment(performance)
-  const isStageRace =
-    isRoadCyclingCompetitionData(performance.data) &&
-    performance.data.eventFormat === 'stage-race'
-  const [activeStageId, setActiveStageId] = useState<string>('general')
-  const stagesQuery = useQuery({
-    queryKey: ['performance-stages', user?.uid ?? 'local-demo-user', performance.id],
-    queryFn: () =>
-      getPerformanceStages(
-        user?.uid ?? 'local-demo-user',
-        performance.id,
-      ),
-    enabled: isStageRace,
-  })
-  const activeStage =
-    stagesQuery.data?.find((stage) => stage.id === activeStageId) ?? null
-  const displayedMetrics = activeStage
-    ? getPerformanceStageMetrics(activeStage)
-    : metrics
-  const displayedStatusComment = activeStage
-    ? activeStage.data.statusComment
-    : statusComment
-  const displayedTrack = activeStage?.track ?? (!isStageRace
-    ? performance.track
-    : undefined)
-
-  useEffect(() => {
-    setActiveStageId('general')
-  }, [performance.id])
+  const style = {
+    '--sport-accent': category.accent,
+    '--sport-soft': category.softAccent,
+  } as CSSProperties
 
   return (
     <motion.aside
@@ -541,136 +516,94 @@ function PerformanceDrawer({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      aria-label={`Details de ${performance.title}`}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
     >
-      <button
-        className="drawer-backdrop"
-        type="button"
-        aria-label="Fermer les details"
-        onClick={onClose}
-      />
       <motion.div
-        className={`drawer-panel sport-${performance.sportKey}`}
-        initial={{ x: 420 }}
-        animate={{ x: 0 }}
-        exit={{ x: 420 }}
-        transition={{ type: 'spring', stiffness: 280, damping: 30 }}
+        className={`drawer-panel category-${performance.categoryKey}`}
+        style={style}
+        initial={{ x: 32, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: 32, opacity: 0 }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="drawer-title"
       >
         <header className="drawer-toolbar">
           <span className="sport-icon" aria-hidden="true">
-            <SportIcon size={19} />
+            <SportIcon size={20} />
           </span>
           <div className="drawer-toolbar-actions">
             <Link
               className="subtle-icon-button"
               to={`/edit/${performance.id}`}
               title="Modifier"
-              aria-label={`Modifier ${performance.title}`}
+              aria-label="Modifier la performance"
             >
-              <Pencil size={17} aria-hidden="true" />
+              <Pencil size={16} aria-hidden="true" />
             </Link>
             <button
               className="subtle-icon-button is-danger"
               type="button"
               title="Supprimer"
-              aria-label={`Supprimer ${performance.title}`}
+              aria-label="Supprimer la performance"
               onClick={onDelete}
             >
-              <Trash2 size={17} aria-hidden="true" />
+              <Trash2 size={16} aria-hidden="true" />
             </button>
             <button
               className="subtle-icon-button"
               type="button"
               title="Fermer"
-              aria-label="Fermer les details"
+              aria-label="Fermer"
               onClick={onClose}
             >
-              <X size={18} aria-hidden="true" />
+              <X size={17} aria-hidden="true" />
             </button>
           </div>
         </header>
 
-        <p className="eyebrow">{sport.label}</p>
-        <h2>{performance.title}</h2>
-        <div className="drawer-meta">
-          <span>
-            <CalendarDays size={16} aria-hidden="true" />
-            {formatDate(performance)}
-          </span>
-          <span>{activityLabels[performance.activityTypeKey]}</span>
+        <div className="drawer-title-block">
+          <p className="eyebrow">{category.label}</p>
+          <h2 id="drawer-title">{performance.title}</h2>
+          <span>{sport.label}</span>
         </div>
 
-        {isStageRace ? (
-          <div
-            className="drawer-stage-tabs"
-            role="tablist"
-            aria-label="Resultats par etape"
-          >
-            {(stagesQuery.data ?? []).map((stage, index) => (
-              <button
-                className={activeStageId === stage.id ? 'is-active' : ''}
-                key={stage.id}
-                type="button"
-                role="tab"
-                aria-selected={activeStageId === stage.id}
-                onClick={() => setActiveStageId(stage.id)}
-              >
-                Etape {index + 1}
-              </button>
+        <div className="drawer-meta">
+          <span>
+            <CalendarDays size={15} aria-hidden="true" />
+            {formatDate(performance.date)}
+          </span>
+          <span>Course</span>
+        </div>
+
+        <section className="drawer-section" aria-labelledby="metrics-title">
+          <h3 id="metrics-title">Resultats</h3>
+          <div className="drawer-metrics">
+            {metrics.map((metric, index) => (
+              <MetricValue
+                key={`${metric.key}-${metric.label}-${index}`}
+                metric={metric}
+              />
             ))}
-            <button
-              className={activeStageId === 'general' ? 'is-active' : ''}
-              type="button"
-              role="tab"
-              aria-selected={activeStageId === 'general'}
-              onClick={() => setActiveStageId('general')}
-            >
-              General
-            </button>
           </div>
-        ) : null}
+        </section>
 
-        {stagesQuery.isLoading ? (
-          <p className="drawer-notes">Chargement des etapes...</p>
-        ) : null}
-
-        {activeStage ? (
-          <section className="drawer-section" aria-labelledby="stage-identity-title">
-            <h3 id="stage-identity-title">{activeStage.title}</h3>
-            <p className="drawer-notes">{formatStageDate(activeStage)}</p>
-          </section>
-        ) : null}
-
-        {displayedMetrics.length ? (
-          <section className="drawer-section" aria-labelledby="metrics-title">
-            <h3 id="metrics-title">
-              {activeStage ? "Resultats de l'etape" : 'Resultats generaux'}
-            </h3>
-            <div className="drawer-metrics">
-              {displayedMetrics.map((metric, index) => (
-                <MetricValue
-                  key={`${metric.key}-${metric.label}-${index}`}
-                  metric={metric}
-                />
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {displayedStatusComment ? (
+        {statusComment ? (
           <section
             className="drawer-section"
             aria-labelledby="status-comment-title"
           >
             <h3 id="status-comment-title">Commentaire de statut</h3>
-            <p className="drawer-notes">{displayedStatusComment}</p>
+            <p className="drawer-notes">{statusComment}</p>
           </section>
         ) : null}
 
-        {displayedTrack ? (
+        {performance.track ? (
           <section className="drawer-section" aria-labelledby="track-title">
             <h3 id="track-title">Trace et profil</h3>
-            <GpxTrackPreview track={displayedTrack} />
+            <GpxTrackPreview track={performance.track} />
           </section>
         ) : null}
 
@@ -765,49 +698,22 @@ function EmptyState({ hasPerformances }: { hasPerformances: boolean }) {
       <p>
         {hasPerformances
           ? 'Modifie la recherche ou selectionne un autre filtre.'
-          : 'Ajoute ta premiere activite pour commencer ton historique.'}
+          : 'Ajoute ta premiere course pour commencer ton historique.'}
       </p>
       {!hasPerformances ? (
         <Link className="primary-button" to="/new">
           <CirclePlus size={18} aria-hidden="true" />
-          Ajouter une activite
+          Ajouter une performance
         </Link>
       ) : null}
     </section>
   )
 }
 
-function formatDate(performance: Performance) {
-  const start = formatCalendarDate(performance.date.start)
-
-  if (!performance.date.end) {
-    return start
-  }
-
-  return `${start} - ${formatCalendarDate(performance.date.end)}`
-}
-
-function formatStageDate(stage: PerformanceStage) {
-  return formatCalendarDate(stage.date)
-}
-
-function formatCalendarDate(date: {
-  year: number
-  month: number
-  day: number
-}) {
+function formatDate(date: Performance['date']) {
   return new Intl.DateTimeFormat('fr-FR', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
   }).format(new Date(date.year, date.month - 1, date.day))
-}
-
-function medalLabel(medal: NonNullable<Metric['medal']>) {
-  return {
-    gold: 'Medaille d or',
-    silver: 'Medaille d argent',
-    bronze: 'Medaille de bronze',
-    chocolate: 'Medaille en chocolat',
-  }[medal]
 }
