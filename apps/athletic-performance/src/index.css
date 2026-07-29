@@ -539,12 +539,13 @@ a {
 
 .performance-ticket {
   position: relative;
+  isolation: isolate;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--sport-accent);
+  border: 1px solid color-mix(in srgb, var(--sport-accent) 82%, #13272d);
+  border-left: 4px solid var(--sport-pop);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--sport-accent);
   box-shadow: var(--shadow-soft);
   transition:
     border-color 180ms ease,
@@ -553,9 +554,9 @@ a {
 }
 
 .performance-ticket:hover {
-  border-top-color: var(--line-strong);
-  border-right-color: var(--line-strong);
-  border-bottom-color: var(--line-strong);
+  border-top-color: var(--sport-pop);
+  border-right-color: var(--sport-pop);
+  border-bottom-color: var(--sport-pop);
   box-shadow: var(--shadow-raised);
   transform: translateX(2px);
 }
@@ -569,7 +570,7 @@ a {
 
 .ticket-actions {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   top: 12px;
   right: 12px;
 }
@@ -577,7 +578,8 @@ a {
 .ticket-actions .subtle-icon-button {
   width: 34px;
   height: 34px;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border-color: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .sport-icon {
@@ -593,6 +595,7 @@ a {
 
 .performance-ticket-main {
   position: relative;
+  z-index: 1;
   display: grid;
   width: 100%;
   min-height: 152px;
@@ -604,7 +607,7 @@ a {
   gap: 22px;
   padding: 22px 58px 22px 22px;
   background: transparent;
-  color: inherit;
+  color: #ffffff;
   text-align: left;
 }
 
@@ -619,7 +622,7 @@ a {
   min-width: 0;
   align-items: center;
   gap: 9px;
-  color: var(--sport-accent);
+  color: #ffffff;
   font-size: 0.75rem;
   font-weight: 780;
 }
@@ -633,15 +636,17 @@ a {
 .ticket-kicker .sport-icon {
   width: 34px;
   height: 34px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
 }
 
 .result-badge {
   flex: 0 0 auto;
-  border: 1px solid var(--line-strong);
+  border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 4px;
   padding: 3px 6px;
-  background: var(--surface-soft);
-  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--sport-accent);
   font-size: 0.62rem;
   font-weight: 820;
   line-height: 1;
@@ -658,7 +663,7 @@ a {
 
 .ticket-identity h3 {
   margin: 14px 0 4px;
-  color: var(--ink-strong);
+  color: #ffffff;
   font-size: 1.16rem;
   font-weight: 800;
   line-height: 1.28;
@@ -667,7 +672,7 @@ a {
 
 .ticket-identity p {
   margin: 0;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.76);
   font-size: 0.74rem;
   font-weight: 650;
 }
@@ -677,9 +682,13 @@ a {
   min-width: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: center;
-  border-right: 1px dashed var(--line-strong);
-  border-left: 1px dashed var(--line-strong);
+  border-right: 1px dashed rgba(255, 255, 255, 0.38);
+  border-left: 1px dashed rgba(255, 255, 255, 0.38);
   padding: 0 18px;
+}
+
+.performance-ticket .metric-value {
+  color: var(--sport-pop);
 }
 
 .metric-value {
@@ -692,12 +701,12 @@ a {
 }
 
 .ticket-metrics .metric-value:nth-child(even) {
-  border-left: 1px solid var(--line);
+  border-left: 1px solid rgba(255, 255, 255, 0.24);
   padding-left: 14px;
 }
 
 .ticket-metrics .metric-value:nth-child(n + 3) {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid rgba(255, 255, 255, 0.24);
 }
 
 .metric-value > span {
@@ -721,43 +730,342 @@ a {
   white-space: normal;
 }
 
+.performance-ticket .metric-value small {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.performance-ticket .metric-value strong {
+  color: #ffffff;
+}
+
 .ticket-empty-metrics {
   grid-column: 1 / -1;
   align-self: center;
   margin: 0;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 0.78rem;
 }
 
 .ticket-visual {
+  position: relative;
+  isolation: isolate;
   display: grid;
   min-width: 0;
   min-height: 108px;
+  overflow: hidden;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.ticket-visual::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: inherit;
+  pointer-events: none;
+  content: '';
+}
+
+.ticket-visual-content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
   place-content: center;
   justify-items: center;
   gap: 9px;
-  border-radius: 4px;
-  background: var(--sport-soft);
-  color: var(--sport-accent);
 }
 
-.ticket-visual > span {
+.ticket-visual-content > svg {
+  filter: drop-shadow(0 3px 7px rgba(12, 28, 32, 0.22));
+}
+
+.ticket-visual-content > span {
   max-width: 130px;
-  color: var(--sport-accent);
+  color: #ffffff;
   font-size: 0.7rem;
   font-weight: 780;
   line-height: 1.3;
   text-align: center;
+  text-shadow: 0 1px 3px rgba(12, 28, 32, 0.3);
 }
 
 .ticket-visual.has-track {
-  background: #f8faf9;
+  background: rgba(7, 22, 27, 0.12);
 }
 
 .ticket-visual .gpx-preview,
 .ticket-visual .gpx-visuals,
 .ticket-visual .track-sketch {
   width: 100%;
+}
+
+.ticket-visual.has-track .track-sketch-halo {
+  stroke: rgba(11, 25, 29, 0.32);
+  stroke-width: 7;
+}
+
+.ticket-visual.has-track .track-sketch-line {
+  stroke: #ffffff;
+  stroke-width: 2.8;
+}
+
+.ticket-visual.has-track .track-marker-start {
+  fill: var(--sport-pop);
+}
+
+.ticket-visual.has-track .track-marker-finish {
+  fill: var(--ink-strong);
+}
+
+.ticket-pattern {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0.34;
+  pointer-events: none;
+}
+
+.ticket-pattern span {
+  position: absolute;
+  display: block;
+}
+
+.pattern-track .ticket-pattern {
+  inset: -18%;
+  transform: rotate(-12deg);
+}
+
+.pattern-track .ticket-pattern span {
+  left: -18%;
+  width: 138%;
+  height: 42%;
+  border: 2px solid rgba(255, 255, 255, 0.48);
+  border-radius: 50%;
+}
+
+.pattern-track .ticket-pattern span:nth-child(1) {
+  top: 5%;
+}
+
+.pattern-track .ticket-pattern span:nth-child(2) {
+  top: 30%;
+  border-color: color-mix(in srgb, var(--sport-pop) 78%, transparent);
+}
+
+.pattern-track .ticket-pattern span:nth-child(3) {
+  top: 55%;
+}
+
+.pattern-contours .ticket-pattern span {
+  border: 2px solid rgba(255, 255, 255, 0.44);
+  border-radius: 44% 56% 61% 39% / 56% 41% 59% 44%;
+  transform: rotate(-18deg);
+}
+
+.pattern-contours .ticket-pattern span:nth-child(1) {
+  top: -52%;
+  left: -18%;
+  width: 92%;
+  height: 132%;
+}
+
+.pattern-contours .ticket-pattern span:nth-child(2) {
+  top: -24%;
+  right: -34%;
+  width: 104%;
+  height: 112%;
+  border-color: color-mix(in srgb, var(--sport-pop) 72%, transparent);
+  transform: rotate(24deg);
+}
+
+.pattern-contours .ticket-pattern span:nth-child(3) {
+  bottom: -64%;
+  left: 18%;
+  width: 86%;
+  height: 118%;
+  transform: rotate(7deg);
+}
+
+.pattern-rings .ticket-pattern span {
+  border: 5px solid rgba(255, 255, 255, 0.38);
+  border-radius: 50%;
+}
+
+.pattern-rings .ticket-pattern span:nth-child(1) {
+  top: -38px;
+  left: -24px;
+  width: 126px;
+  height: 126px;
+}
+
+.pattern-rings .ticket-pattern span:nth-child(2) {
+  right: -34px;
+  bottom: -46px;
+  width: 146px;
+  height: 146px;
+  border-color: color-mix(in srgb, var(--sport-pop) 82%, transparent);
+  border-width: 10px;
+}
+
+.pattern-rings .ticket-pattern span:nth-child(3) {
+  top: 26%;
+  left: 46%;
+  width: 44px;
+  height: 44px;
+  border-width: 3px;
+}
+
+.pattern-gravel .ticket-pattern span {
+  width: 9px;
+  height: 9px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  transform: rotate(36deg);
+}
+
+.pattern-gravel .ticket-pattern span:nth-child(1) {
+  top: 18px;
+  left: 14px;
+  box-shadow:
+    36px 28px 0 rgba(255, 255, 255, 0.12),
+    88px -7px 0 rgba(255, 255, 255, 0.16),
+    128px 42px 0 rgba(255, 255, 255, 0.12);
+}
+
+.pattern-gravel .ticket-pattern span:nth-child(2) {
+  right: 20px;
+  bottom: 18px;
+  border-color: var(--sport-pop);
+  box-shadow:
+    -48px -30px 0 color-mix(in srgb, var(--sport-pop) 32%, transparent),
+    -104px 8px 0 color-mix(in srgb, var(--sport-pop) 26%, transparent);
+}
+
+.pattern-gravel .ticket-pattern span:nth-child(3) {
+  bottom: 15px;
+  left: 24px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.pattern-waves .ticket-pattern span {
+  left: -14%;
+  width: 78%;
+  height: 44px;
+  border-bottom: 3px solid rgba(255, 255, 255, 0.52);
+  border-radius: 0 0 50% 50%;
+}
+
+.pattern-waves .ticket-pattern span::after {
+  position: absolute;
+  right: -82%;
+  bottom: -3px;
+  width: 90%;
+  height: 44px;
+  border-bottom: 3px solid rgba(255, 255, 255, 0.52);
+  border-radius: 0 0 50% 50%;
+  content: '';
+}
+
+.pattern-waves .ticket-pattern span:nth-child(1) {
+  top: -12px;
+}
+
+.pattern-waves .ticket-pattern span:nth-child(2) {
+  top: 30px;
+  left: -38%;
+  border-color: var(--sport-pop);
+}
+
+.pattern-waves .ticket-pattern span:nth-child(2)::after {
+  border-color: var(--sport-pop);
+}
+
+.pattern-waves .ticket-pattern span:nth-child(3) {
+  top: 74px;
+}
+
+.pattern-peaks .ticket-pattern span {
+  width: 78px;
+  height: 78px;
+  border-top: 3px solid rgba(255, 255, 255, 0.56);
+  border-left: 3px solid rgba(255, 255, 255, 0.56);
+  transform: rotate(45deg);
+}
+
+.pattern-peaks .ticket-pattern span:nth-child(1) {
+  bottom: -54px;
+  left: -2px;
+}
+
+.pattern-peaks .ticket-pattern span:nth-child(2) {
+  right: 8px;
+  bottom: -34px;
+  width: 112px;
+  height: 112px;
+  border-color: var(--sport-pop);
+}
+
+.pattern-peaks .ticket-pattern span:nth-child(3) {
+  top: -54px;
+  left: 42%;
+  width: 64px;
+  height: 64px;
+}
+
+.pattern-snow .ticket-pattern span {
+  top: 50%;
+  left: 12%;
+  width: 76%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.pattern-snow .ticket-pattern span:nth-child(1) {
+  transform: rotate(0deg);
+}
+
+.pattern-snow .ticket-pattern span:nth-child(2) {
+  background: var(--sport-pop);
+  transform: rotate(60deg);
+}
+
+.pattern-snow .ticket-pattern span:nth-child(3) {
+  transform: rotate(120deg);
+}
+
+.pattern-multisport .ticket-pattern {
+  inset: -24%;
+  transform: rotate(-18deg);
+}
+
+.pattern-multisport .ticket-pattern span {
+  left: -12%;
+  width: 134%;
+  height: 20px;
+  border-radius: 3px;
+}
+
+.pattern-multisport .ticket-pattern span:nth-child(1) {
+  top: 22%;
+  background: var(--sport-pop);
+}
+
+.pattern-multisport .ticket-pattern span:nth-child(2) {
+  top: 45%;
+  background: #46c4d3;
+}
+
+.pattern-multisport .ticket-pattern span:nth-child(3) {
+  top: 68%;
+  background: rgba(255, 255, 255, 0.66);
 }
 
 .ticket-details {
@@ -767,7 +1075,7 @@ a {
   display: flex;
   align-items: center;
   gap: 4px;
-  color: var(--sport-accent);
+  color: #ffffff;
   font-size: 0.7rem;
   font-weight: 780;
 }
@@ -2115,8 +2423,8 @@ a {
   .ticket-metrics {
     min-height: 112px;
     border: 0;
-    border-top: 1px dashed var(--line-strong);
-    border-bottom: 1px dashed var(--line-strong);
+    border-top: 1px dashed rgba(255, 255, 255, 0.38);
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.38);
     padding: 8px 0;
   }
 

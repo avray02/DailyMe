@@ -64,6 +64,38 @@ const metricIcons: Record<Metric['key'], LucideIcon> = {
   custom: Activity,
 }
 
+type TicketPattern =
+  | 'track'
+  | 'contours'
+  | 'rings'
+  | 'gravel'
+  | 'waves'
+  | 'peaks'
+  | 'snow'
+  | 'multisport'
+
+const ticketPatternBySport: Record<SportKey, TicketPattern> = {
+  'road-running': 'track',
+  'trail-running': 'contours',
+  'road-cycling': 'rings',
+  'mountain-biking': 'contours',
+  'gravel-cycling': 'gravel',
+  'open-water-swimming': 'waves',
+  'winter-trail': 'contours',
+  'ski-mountaineering': 'peaks',
+  'cross-country-skiing-skating': 'snow',
+  'cross-country-skiing-classic': 'track',
+  triathlon: 'multisport',
+}
+
+const ticketPopColorByCategory: Record<SportCategoryKey, string> = {
+  running: '#f4b942',
+  cycling: '#c4df58',
+  swimming: '#46c4d3',
+  'winter-sports': '#ffffff',
+  multisport: '#f2bd4b',
+}
+
 export function Dashboard() {
   const { user } = useAuth()
   const location = useLocation()
@@ -405,9 +437,11 @@ function PerformanceTicket({
   const performanceTracks = getPerformanceTracks(performance)
   const primaryTrack = performanceTracks[0]?.track
   const status = performance.data.resultStatus
+  const ticketPattern = ticketPatternBySport[performance.sportKey]
   const style = {
     '--sport-accent': category.accent,
     '--sport-soft': category.softAccent,
+    '--sport-pop': ticketPopColorByCategory[performance.categoryKey],
   } as CSSProperties
 
   return (
@@ -427,7 +461,12 @@ function PerformanceTicket({
         <span>{formatMonth(performance.date)}</span>
       </time>
 
-      <div className="performance-ticket">
+      <div className={`performance-ticket pattern-${ticketPattern}`}>
+        <div className="ticket-pattern" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
         <div className="ticket-actions">
           <Link
             className="subtle-icon-button"
@@ -482,19 +521,19 @@ function PerformanceTicket({
           </div>
 
           <div
-            className={
-              primaryTrack ? 'ticket-visual has-track' : 'ticket-visual'
-            }
+            className={primaryTrack ? 'ticket-visual has-track' : 'ticket-visual'}
             aria-hidden={!primaryTrack}
           >
-            {primaryTrack ? (
-              <GpxTrackPreview track={primaryTrack} compact />
-            ) : (
-              <>
-                <SportIcon size={42} strokeWidth={1.5} aria-hidden="true" />
-                <span>{sport.label}</span>
-              </>
-            )}
+            <div className="ticket-visual-content">
+              {primaryTrack ? (
+                <GpxTrackPreview track={primaryTrack} compact />
+              ) : (
+                <>
+                  <SportIcon size={42} strokeWidth={1.5} aria-hidden="true" />
+                  <span>{sport.label}</span>
+                </>
+              )}
+            </div>
           </div>
 
           <span className="ticket-details">
