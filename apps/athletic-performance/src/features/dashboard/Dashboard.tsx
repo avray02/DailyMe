@@ -34,6 +34,7 @@ import { GpxTrackPreview } from '../performance-form/GpxTrackPreview'
 import {
   categoryByKey,
   isTriathlonData,
+  resultStatusLabels,
   sportByKey,
   sportCategories,
   sportOptions,
@@ -313,9 +314,9 @@ export function Dashboard() {
                 {yearGroups[year].length > 1 ? 's' : ''}
               </span>
             </header>
-            <div className="performance-grid">
+            <div className="performance-list">
               {yearGroups[year].map((performance, index) => (
-                <PerformanceCard
+                <PerformanceTicket
                   key={performance.id}
                   performance={performance}
                   index={index}
@@ -386,7 +387,7 @@ function FilterButton({
   )
 }
 
-function PerformanceCard({
+function PerformanceTicket({
   performance,
   index,
   onSelect,
@@ -403,6 +404,7 @@ function PerformanceCard({
   const visibleMetrics = getPerformanceMetrics(performance).slice(0, 4)
   const performanceTracks = getPerformanceTracks(performance)
   const primaryTrack = performanceTracks[0]?.track
+  const status = performance.data.resultStatus
   const style = {
     '--sport-accent': category.accent,
     '--sport-soft': category.softAccent,
@@ -410,18 +412,23 @@ function PerformanceCard({
 
   return (
     <motion.article
-      className={`performance-card category-${performance.categoryKey}`}
+      className={`performance-entry category-${performance.categoryKey}`}
       style={style}
       initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-32px' }}
       transition={{ delay: Math.min(index * 0.03, 0.18), duration: 0.28 }}
     >
-      <header className="performance-card-header">
-        <span className="sport-icon" aria-hidden="true">
-          <SportIcon size={19} />
-        </span>
-        <div className="card-actions">
+      <time
+        className="performance-date"
+        dateTime={formatDateAttribute(performance.date)}
+      >
+        <strong>{String(performance.date.day).padStart(2, '0')}</strong>
+        <span>{formatMonth(performance.date)}</span>
+      </time>
+
+      <div className="performance-ticket">
+        <div className="ticket-actions">
           <Link
             className="subtle-icon-button"
             to={`/edit/${performance.id}`}
@@ -440,44 +447,62 @@ function PerformanceCard({
             <Trash2 size={16} aria-hidden="true" />
           </button>
         </div>
-      </header>
 
-      <button className="performance-card-main" type="button" onClick={onSelect}>
-        <div
-          className={
-            primaryTrack ? 'card-summary has-track' : 'card-summary'
-          }
+        <button
+          className="performance-ticket-main"
+          type="button"
+          aria-label={`Voir les details de ${performance.title}`}
+          onClick={onSelect}
         >
-          <div className="card-summary-copy">
-            <div className="card-meta">
-              <span>
-                <CalendarDays size={15} aria-hidden="true" />
-                {formatDate(performance.date)}
+          <div className="ticket-identity">
+            <div className="ticket-kicker">
+              <span className="sport-icon" aria-hidden="true">
+                <SportIcon size={18} />
               </span>
-              <span className="activity-badge">Course</span>
+              <span>{sport.label}</span>
+              <span className={`result-badge is-${status}`}>
+                {resultStatusLabels[status]}
+              </span>
             </div>
             <h3>{performance.title}</h3>
-            <p className="sport-label">{sport.label}</p>
+            <p>{category.label}</p>
           </div>
-          {primaryTrack ? (
-            <GpxTrackPreview track={primaryTrack} compact />
-          ) : null}
-        </div>
 
-        <div className="card-metrics">
-          {visibleMetrics.map((metric, metricIndex) => (
-            <MetricValue
-              key={`${metric.key}-${metric.label}-${metricIndex}`}
-              metric={metric}
-            />
-          ))}
-        </div>
+          <div className="ticket-metrics">
+            {visibleMetrics.length > 0 ? (
+              visibleMetrics.map((metric, metricIndex) => (
+                <MetricValue
+                  key={`${metric.key}-${metric.label}-${metricIndex}`}
+                  metric={metric}
+                />
+              ))
+            ) : (
+              <p className="ticket-empty-metrics">Aucun resultat renseigne</p>
+            )}
+          </div>
 
-        <span className="details-link">
-          Voir les details
-          <ChevronRight size={16} aria-hidden="true" />
-        </span>
-      </button>
+          <div
+            className={
+              primaryTrack ? 'ticket-visual has-track' : 'ticket-visual'
+            }
+            aria-hidden={!primaryTrack}
+          >
+            {primaryTrack ? (
+              <GpxTrackPreview track={primaryTrack} compact />
+            ) : (
+              <>
+                <SportIcon size={42} strokeWidth={1.5} aria-hidden="true" />
+                <span>{sport.label}</span>
+              </>
+            )}
+          </div>
+
+          <span className="ticket-details">
+            Details
+            <ChevronRight size={16} aria-hidden="true" />
+          </span>
+        </button>
+      </div>
     </motion.article>
   )
 }
@@ -760,4 +785,19 @@ function formatDate(date: Performance['date']) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(date.year, date.month - 1, date.day))
+}
+
+function formatMonth(date: Performance['date']) {
+  return new Intl.DateTimeFormat('fr-FR', { month: 'short' })
+    .format(new Date(date.year, date.month - 1, date.day))
+    .replace('.', '')
+    .toUpperCase()
+}
+
+function formatDateAttribute(date: Performance['date']) {
+  return [
+    String(date.year),
+    String(date.month).padStart(2, '0'),
+    String(date.day).padStart(2, '0'),
+  ].join('-')
 }
